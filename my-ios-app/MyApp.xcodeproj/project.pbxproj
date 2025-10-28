@@ -1,0 +1,93 @@
+// !$*UTF8*$!
+// 
+// !PBXProject
+// 	isa = PBXProject;
+// 	attributes = {
+// 		LastUpgradeCheck = 1300;
+// 		ORGANIZATIONNAME = "YourOrganizationName";
+// 	};
+// 	buildConfigurationList = 1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7;
+// 	compatibilityVersion = "Xcode 13.0";
+// 	developmentRegion = en;
+// 	hasScannedForEncodings = 0;
+// 	mainGroup = 1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7;
+// 	productRefGroup = 1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7;
+// 	projectDirPath = "";
+// 	projectRoot = "";
+// 	targets = (
+// 		1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7,
+// 	);
+// };
+
+// !PBXGroup
+// 	isa = PBXGroup;
+// 	children = (
+// 		1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7,
+// 	);
+// 	sourceTree = "<group>";
+
+// !PBXFileReference
+// 	isa = PBXFileReference;
+// 	lastKnownFileType = sourcecode.swift;
+// 	name = AppDelegate.swift;
+// 	path = MyApp/AppDelegate.swift;
+// 	sourceTree = "<group>";
+
+// !PBXFileReference
+// 	isa = PBXFileReference;
+// 	lastKnownFileType = sourcecode.swift;
+// 	name = SceneDelegate.swift;
+// 	path = MyApp/SceneDelegate.swift;
+// 	sourceTree = "<group>";
+
+// !PBXFileReference
+// 	isa = PBXFileReference;
+// 	lastKnownFileType = sourcecode.swift;
+// 	name = ViewController.swift;
+// 	path = MyApp/ViewController.swift;
+// 	sourceTree = "<group>";
+
+// !PBXTarget
+// 	isa = PBXNativeTarget;
+// 	name = MyApp;
+// 	productName = MyApp;
+// 	productReference = 1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7;
+// 	productType = "com.apple.product-type.application";
+// 	buildConfigurationList = 1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7;
+// 	phase = (
+// 		1A2B3C4D5E6F7G8H9I0J1K2L3M4N5O6P7,
+// 	);
+// };
+
+// !PBXBuildConfiguration
+// 	isa = PBXBuildConfiguration;
+// 	name = Debug;
+// 	baseConfigurationReference = null;
+// 	buildSettings = {
+// 		CLANG_CXX_LANGUAGE_STANDARD = "c++14";
+// 		CLANG_CXX_LIBRARY = "libc++";
+// 		ENABLE_BITCODE = NO;
+// 		GCC_PREPROCESSOR_DEFINITIONS =(
+// 			"DEBUG=1",
+// 			"$(inherited)",
+// 		);
+// 		IPHONEOS_DEPLOYMENT_TARGET = "14.0";
+// 	};
+// };
+
+// !PBXBuildConfiguration
+// 	isa = PBXBuildConfiguration;
+// 	name = Release;
+// 	baseConfigurationReference = null;
+// 	buildSettings = {
+// 		CLANG_CXX_LANGUAGE_STANDARD = "c++14";
+// 		CLANG_CXX_LIBRARY = "libc++";
+// 		ENABLE_BITCODE = NO;
+// 		GCC_PREPROCESSOR_DEFINITIONS =(
+// 			"$(inherited)",
+// 		);
+// 		IPHONEOS_DEPLOYMENT_TARGET = "14.0";
+// 	};
+// };
+
+// !END PBXProject

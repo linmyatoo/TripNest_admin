@@ -1,0 +1,10 @@
+platform :ios, '13.0'
+
+target 'MyApp' do
+  use_frameworks!
+
+  # Pods for MyApp
+  pod 'Alamofire', '~> 5.4'
+  pod 'SwiftyJSON', '~> 5.0'
+
+end
