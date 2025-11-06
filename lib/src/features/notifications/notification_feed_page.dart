@@ -14,7 +14,6 @@ class NotificationFeedPage extends StatelessWidget {
         children: const [
           _Label('Today'),
           SizedBox(height: 8),
-
           _SimpleNotificationCard(
             title: 'New booking — Flower Festival',
             body: '1 × Adult, Name – Panda',
@@ -40,15 +39,11 @@ class _SimpleNotificationCard extends StatelessWidget {
   final String title;
   final String body;
   final String time;
-  final Color? titleColor;
-  final VoidCallback? onTap;
 
   const _SimpleNotificationCard({
     required this.title,
     required this.body,
     required this.time,
-    this.titleColor,
-    this.onTap,
   });
 
   @override
@@ -64,7 +59,7 @@ class _SimpleNotificationCard extends StatelessWidget {
         shadowColor: Colors.black.withOpacity(0.08),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
+          onTap: () {},
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
@@ -90,12 +85,12 @@ class _SimpleNotificationCard extends StatelessWidget {
                         title,
                         style: text.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
-                              color: titleColor ?? const Color(0xFF111827),
+                              color: const Color(0xFF111827),
                             ) ??
-                            TextStyle(
+                            const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: titleColor ?? const Color(0xFF111827),
+                              color: Color(0xFF111827),
                             ),
                       ),
                     ),
