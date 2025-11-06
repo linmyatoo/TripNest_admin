@@ -45,6 +45,14 @@ class _LoginPageState extends State<LoginPage> {
         // Save token and user data
         final data = result['data'];
         if (data != null && data['token'] != null && data['user'] != null) {
+          // Print token to console
+          print('====================================');
+          print('LOGIN SUCCESS');
+          print('====================================');
+          print('Token: ${data['token']}');
+          print('User: ${data['user']}');
+          print('====================================');
+
           await AuthStorage.saveAuth(
             token: data['token'],
             user: data['user'],

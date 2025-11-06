@@ -11,9 +11,10 @@ class ApiService {
   // Register a new user
   Future<Map<String, dynamic>> register({
     required String username,
+    required String phone_number,
     required String email,
     required String password,
-    String role = 'admin', // Default role is admin for admin app
+    String role = 'admin',
   }) async {
     try {
       final response = await http.post(
@@ -23,6 +24,7 @@ class ApiService {
         },
         body: jsonEncode({
           'username': username,
+          'phone_number': phone_number,
           'email': email,
           'password': password,
           'role': role,
@@ -129,6 +131,47 @@ class ApiService {
       return {
         'success': true,
         'message': 'Logged out locally',
+      };
+    }
+  }
+
+  // Get user profile
+  Future<Map<String, dynamic>> getUserProfile() async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/user/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': data,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to fetch profile',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
       };
     }
   }

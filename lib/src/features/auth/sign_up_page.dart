@@ -14,7 +14,7 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final name = TextEditingController();
-  final phone = TextEditingController();
+  final phone_number = TextEditingController();
   final email = TextEditingController();
   final password = TextEditingController();
   bool _obscurePassword = true;
@@ -35,6 +35,10 @@ class _SignUpPageState extends State<SignUpPage> {
       _showSnackBar('Please enter your name');
       return;
     }
+    if (phone_number.text.trim().isEmpty) {
+      _showSnackBar('Please enter your phone number');
+      return;
+    }
     if (email.text.trim().isEmpty) {
       _showSnackBar('Please enter your email');
       return;
@@ -49,6 +53,7 @@ class _SignUpPageState extends State<SignUpPage> {
     try {
       final result = await _apiService.register(
         username: name.text.trim(),
+        phone_number: phone_number.text.trim(),
         email: email.text.trim(),
         password: password.text.trim(),
         role: 'admin', // Admin role for admin app
@@ -116,7 +121,7 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 8),
               AppTextField(
                 hint: 'Enter your number',
-                controller: phone,
+                controller: phone_number,
                 keyboardType: TextInputType.phone,
                 textInputAction: TextInputAction.next,
                 prefix: Padding(
