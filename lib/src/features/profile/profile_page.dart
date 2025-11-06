@@ -1,19 +1,69 @@
 import 'package:flutter/material.dart';
+
+import '../../core/services/api_service.dart';
+import '../../core/services/auth_storage.dart';
 import '../../core/widgets/settings_tile.dart';
 import '../notifications/notification_feed_page.dart';
-import 'personal_data_page.dart';
 import 'change_password_page.dart';
-import 'notifications_settings_page.dart';
-import 'security_page.dart';
-import 'privacy_policy_page.dart';
 import 'help_center_page.dart';
+import 'notifications_settings_page.dart';
+import 'personal_data_page.dart';
+import 'privacy_policy_page.dart';
+import 'security_page.dart';
 
 class ProfilePage extends StatelessWidget {
   static const route = '/profile';
   const ProfilePage({super.key});
 
+  Future<void> _handleLogout(BuildContext context) async {
+    final apiService = ApiService();
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      await apiService.logout();
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Navigate to login and clear all routes
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (_) => false,
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+
+        // Even on error, clear local storage and logout
+        await AuthStorage.clearAuth();
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login',
+          (_) => false,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Get user data from auth storage
+    final user = AuthStorage.getUser();
+    final username = user?['username'] ?? 'User';
+    final email = user?['email'] ?? 'user@example.com';
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -26,16 +76,16 @@ class ProfilePage extends StatelessWidget {
                     backgroundImage:
                         AssetImage('assets/images/avatar_jacob.jpg')),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Harry',
-                            style: TextStyle(
+                        Text(username,
+                            style: const TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.w700)),
-                        SizedBox(height: 2),
-                        Text('harry3435@gmail.com',
-                            style: TextStyle(color: Color(0xFF6B7280))),
+                        const SizedBox(height: 2),
+                        Text(email,
+                            style: const TextStyle(color: Color(0xFF6B7280))),
                       ]),
                 ),
                 IconButton(
@@ -96,9 +146,8 @@ class ProfilePage extends StatelessWidget {
                   context: context,
                   builder: (_) => const _LogoutConfirmDialog(),
                 );
-                if (ok == true) {
-                  Navigator.pushNamedAndRemoveUntil(
-                      context, '/login', (_) => false);
+                if (ok == true && context.mounted) {
+                  await _handleLogout(context);
                 }
               },
             ),
