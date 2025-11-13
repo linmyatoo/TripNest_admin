@@ -6,7 +6,7 @@ import 'auth_storage.dart';
 
 class ApiService {
   static const String baseUrl =
-      'https://underground-brittni-tripnest-82c64bf9.koyeb.app/api';
+      ' https://underground-brittni-tripnest-82c64bf9.koyeb.app/api';
 
   // Register a new user
   Future<Map<String, dynamic>> register({
