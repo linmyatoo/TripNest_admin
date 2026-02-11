@@ -68,8 +68,8 @@ class HomePageState extends State<HomePage> {
               children: const [
                 Text('Your events',
                     style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                _BlueLink('See All'),
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                // _BlueLink('See All'),
               ],
             ),
             const SizedBox(height: 12),
@@ -121,17 +121,17 @@ class HomePageState extends State<HomePage> {
   }
 }
 
-class _BlueLink extends StatelessWidget {
-  final String text;
-  const _BlueLink(this.text);
+// class _BlueLink extends StatelessWidget {
+//   final String text;
+//   const _BlueLink(this.text);
 
-  @override
-  Widget build(BuildContext context) {
-    return Text(text,
-        style: const TextStyle(
-            color: AppColors.primary, fontWeight: FontWeight.w600));
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Text(text,
+//         style: const TextStyle(
+//             color: AppColors.primary, fontWeight: FontWeight.w600));
+//   }
+// }
 
 class _Header extends StatelessWidget {
   final String? organizerName;
@@ -218,7 +218,7 @@ class _EventCardState extends State<_EventCard> {
 
   void _startAutoSlide() {
     if (_images.length <= 1) return;
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (!mounted) return;
       _currentPage = (_currentPage + 1) % _images.length;
       _pageController.animateToPage(
@@ -255,10 +255,11 @@ class _EventCardState extends State<_EventCard> {
                   const BorderRadius.vertical(top: Radius.circular(16)),
               child: SizedBox(
                 height: 140,
-                child: _images.isNotEmpty
-                    ? Stack(
-                        children: [
-                          PageView.builder(
+                child: Stack(
+                  children: [
+                    // Images
+                    _images.isNotEmpty
+                        ? PageView.builder(
                             controller: _pageController,
                             itemCount: _images.length,
                             onPageChanged: (index) {
@@ -276,41 +277,84 @@ class _EventCardState extends State<_EventCard> {
                                 ),
                               );
                             },
+                          )
+                        : Container(
+                            color: Colors.grey[200],
+                            child: const Center(
+                              child: Icon(Icons.event,
+                                  size: 48, color: Colors.grey),
+                            ),
                           ),
-                          // Page Indicator
-                          if (_images.length > 1)
-                            Positioned(
-                              bottom: 8,
-                              left: 0,
-                              right: 0,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: List.generate(
-                                  _images.length,
-                                  (index) => Container(
-                                    width: 8,
-                                    height: 8,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 3),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: _currentPage == index
-                                          ? Colors.white
-                                          : Colors.white.withOpacity(0.5),
+                    // Edit Button with blur background
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                // TODO: Navigate to edit event page
+                                Navigator.pushNamed(context, '/create-event');
+                              },
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.edit,
+                                        size: 16, color: Colors.white),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Edit',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
                             ),
-                        ],
-                      )
-                    : Container(
-                        color: Colors.grey[200],
-                        child: const Center(
-                          child:
-                              Icon(Icons.event, size: 48, color: Colors.grey),
+                          ),
                         ),
                       ),
+                    ),
+                    // Page Indicator
+                    if (_images.length > 1)
+                      Positioned(
+                        bottom: 8,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            _images.length,
+                            (index) => Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _currentPage == index
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.5),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             // Event Details
