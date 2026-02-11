@@ -1,27 +1,118 @@
 import 'package:flutter/material.dart';
+import '../../core/services/notification_service.dart';
 
-class NotificationFeedPage extends StatelessWidget {
+class NotificationFeedPage extends StatefulWidget {
   static const route = '/notifications-feed';
   const NotificationFeedPage({super.key});
+
+  @override
+  State<NotificationFeedPage> createState() => _NotificationFeedPageState();
+}
+
+class _NotificationFeedPageState extends State<NotificationFeedPage> {
+  List<AppNotification> _notifications = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    final notifications = await NotificationService.getNotifications();
+    await NotificationService.markAllAsRead();
+    if (mounted) {
+      setState(() {
+        _notifications = notifications;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Map<String, List<AppNotification>> _groupByDate() {
+    final Map<String, List<AppNotification>> grouped = {};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+
+    for (final n in _notifications) {
+      final date =
+          DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      String label;
+      if (date == today) {
+        label = 'Today';
+      } else if (date == yesterday) {
+        label = 'Yesterday';
+      } else {
+        label = '${date.day}/${date.month}/${date.year}';
+      }
+      grouped.putIfAbsent(label, () => []);
+      grouped[label]!.add(n);
+    }
+    return grouped;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          leading: const BackButton(), title: const Text('Notification')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: const [
-          _Label('Today'),
-          SizedBox(height: 8),
-          _SimpleNotificationCard(
-            title: 'New booking — Flower Festival',
-            body: '1 × Adult, Name – Panda',
-            time: '2m ago',
-          ),
+        leading: const BackButton(),
+        title: const Text('Notification'),
+        actions: [
+          if (_notifications.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                await NotificationService.clearAll();
+                _loadNotifications();
+              },
+            ),
         ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _notifications.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.notifications_off_outlined,
+                          size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text('No notifications yet',
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 16)),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadNotifications,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    children: _buildGroupedList(),
+                  ),
+                ),
     );
+  }
+
+  List<Widget> _buildGroupedList() {
+    final grouped = _groupByDate();
+    final widgets = <Widget>[];
+
+    for (final entry in grouped.entries) {
+      widgets.add(_Label(entry.key));
+      widgets.add(const SizedBox(height: 8));
+      for (final notification in entry.value) {
+        widgets.add(_SimpleNotificationCard(
+          title: notification.title,
+          body: notification.body,
+          time: notification.timeAgo,
+        ));
+      }
+      widgets.add(const SizedBox(height: 8));
+    }
+    return widgets;
   }
 }
 

@@ -43,19 +43,26 @@ class _LoginPageState extends State<LoginPage> {
 
       if (result['success']) {
         // Save token and user data
-        final data = result['data'];
-        if (data != null && data['token'] != null && data['user'] != null) {
+        final token = result['token'];
+        final userId = result['userId'];
+        final userEmail = result['email'];
+
+        if (token != null) {
           // Print token to console
           print('====================================');
           print('LOGIN SUCCESS');
           print('====================================');
-          print('Token: ${data['token']}');
-          print('User: ${data['user']}');
+          print('Token: $token');
+          print('UserId: $userId');
+          print('Email: $userEmail');
           print('====================================');
 
           await AuthStorage.saveAuth(
-            token: data['token'],
-            user: data['user'],
+            token: token,
+            user: {
+              'id': userId,
+              'email': userEmail,
+            },
           );
 
           // Navigate to app
@@ -63,7 +70,7 @@ class _LoginPageState extends State<LoginPage> {
             Navigator.pushReplacementNamed(context, '/app');
           }
         } else {
-          _showSnackBar('Login response missing token or user data');
+          _showSnackBar('Login response missing token');
         }
       } else {
         _showSnackBar(result['message'] ?? 'Login failed');

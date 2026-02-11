@@ -22,16 +22,18 @@ class PersonalDataPage extends StatefulWidget {
 }
 
 class _PersonalDataPageState extends State<PersonalDataPage> {
-  final nameCtrl = TextEditingController();
-  final emailCtrl = TextEditingController();
-  final phoneCtrl = TextEditingController();
-  final dobCtrl = TextEditingController();
+  final organizationNameCtrl = TextEditingController();
+  final contactNumberCtrl = TextEditingController();
+  final addressCtrl = TextEditingController();
 
   final _picker = ImagePicker();
   final _apiService = ApiService();
   File? _avatar; // local preview image
   static const int _maxBytes = 1024 * 1024; // 1 MB
   bool _isLoading = true;
+  bool _isSaving = false;
+  String? _organizerId;
+  String? _userId;
 
   @override
   void initState() {
@@ -43,25 +45,33 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
     setState(() => _isLoading = true);
 
     try {
-      print('📡 Fetching user profile...');
-      final result = await _apiService.getUserProfile();
+      print('📡 Fetching organizer profile...');
+      final result = await _apiService.getOrganizerProfile();
 
       if (result['success']) {
-        final userData = result['data']['user'];
+        final data = result['data'];
 
         print('====================================');
-        print('USER PROFILE DATA');
+        print('ORGANIZER PROFILE DATA');
         print('====================================');
-        print('Username: ${userData['username']}');
-        print('Email: ${userData['email']}');
-        print('Phone: ${userData['phone_number']}');
-        print('Role: ${userData['role']}');
+        print('ID: ${data['id']}');
+        print('User ID: ${data['userId']}');
+        print('Organization Name: ${data['organizationName']}');
+        print('Contact Number: ${data['contactNumber']}');
+        print('Address: ${data['address']}');
         print('====================================');
 
         setState(() {
-          nameCtrl.text = userData['username'] ?? '';
-          emailCtrl.text = userData['email'] ?? '';
-          phoneCtrl.text = userData['phone_number'] ?? '';
+          _organizerId = data['id'];
+          _userId = data['userId'];
+          organizationNameCtrl.text = data['organizationName'] != 'Not Set'
+              ? data['organizationName'] ?? ''
+              : '';
+          contactNumberCtrl.text = data['contactNumber'] != 'Not Set'
+              ? data['contactNumber'] ?? ''
+              : '';
+          addressCtrl.text =
+              data['address'] != 'Not Set' ? data['address'] ?? '' : '';
           _isLoading = false;
         });
       } else {
@@ -78,35 +88,31 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
   void _snack(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
-  Future<void> _pickDob() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(now.year - 24, 11, 24),
-      firstDate: DateTime(now.year - 90),
-      lastDate: now,
-    );
-    if (picked != null) {
-      dobCtrl.text =
-          '${_monthName(picked.month)} ${picked.day}, ${picked.year}';
-      setState(() {});
+  Future<void> _handleSave() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final result = await _apiService.createOrganizerProfile(
+        organizationName: organizationNameCtrl.text.trim(),
+        contactNumber: contactNumberCtrl.text.trim(),
+        address: addressCtrl.text.trim(),
+      );
+
+      setState(() => _isSaving = false);
+
+      if (result['success']) {
+        _snack('Profile saved successfully');
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      } else {
+        _snack(result['message'] ?? 'Failed to save profile');
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      _snack('Error saving profile');
     }
   }
-
-  String _monthName(int m) => const [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December'
-      ][m - 1];
 
   // ---------- Image compression (≤ 1 MB), pure Dart ----------
   Future<File?> _ensureUnder1MB(File file) async {
@@ -241,7 +247,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
     return Scaffold(
       appBar: AppBar(
         leading: const BackButton(),
-        title: const Text('Personal Data'),
+        title: const Text('Organizer Profile'),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -278,66 +284,47 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text('Full Name',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  AppTextField(hint: 'Harry', controller: nameCtrl),
-                  const SizedBox(height: 16),
-                  const Text('Email',
+                  const Text('Organization Name',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   AppTextField(
-                    hint: 'harry3435@gmail.com',
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
+                    hint: 'Enter organization name',
+                    controller: organizationNameCtrl,
                   ),
                   const SizedBox(height: 16),
-                  const Text('Phone Number',
+                  const Text('Contact Number',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   AppTextField(
-                    hint: '83542015258',
-                    controller: phoneCtrl,
+                    hint: 'Enter contact number',
+                    controller: contactNumberCtrl,
                     keyboardType: TextInputType.phone,
                     prefix: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child:
-                          Row(mainAxisSize: MainAxisSize.min, children: const [
-                        Text('+65',
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Image.asset('assets/images/flag_th.png',
+                            width: 22, height: 22),
+                        const SizedBox(width: 8),
+                        const Text('+66',
                             style: TextStyle(fontWeight: FontWeight.w600)),
-                        SizedBox(width: 8),
-                        VerticalDivider(width: 1, thickness: 1),
-                        SizedBox(width: 4),
+                        const SizedBox(width: 8),
+                        const VerticalDivider(width: 1.0, thickness: 1.0),
+                        const SizedBox(width: 4),
                       ]),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Date of Birth',
+                  const Text('Address',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: dobCtrl,
-                    readOnly: true,
-                    onTap: _pickDob,
-                    decoration: const InputDecoration(
-                      hintText: 'November 24, 2000',
-                      suffixIcon: Icon(Icons.calendar_today_outlined),
-                    ),
+                  AppTextField(
+                    hint: 'Enter address',
+                    controller: addressCtrl,
                   ),
-                  const SizedBox(height: 16),
-                  const Text('Gender',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  const AppTextField(hint: ''),
                   const SizedBox(height: 22),
                   PrimaryButton(
-                    label: 'Save Canges', // (keeping your Figma label)
-                    onPressed: () {
-                      // Navigate back to Profile page
-                      Navigator.pop(context);
-                      // Optionally show feedback
-                      // _snack('Profile updated (mock)');
-                    },
+                    label: _isSaving ? 'Saving...' : 'Save Changes',
+                    onPressed: _isSaving ? null : _handleSave,
                   ),
                 ],
               ),

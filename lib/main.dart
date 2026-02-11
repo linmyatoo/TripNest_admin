@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'src/app_shell.dart';
+import 'src/core/services/auth_storage.dart';
+import 'src/core/services/notification_service.dart';
 import 'src/core/theme/app_colors.dart';
 import 'src/features/auth/forgot_password_page.dart';
 import 'src/features/auth/login_page.dart';
@@ -20,7 +22,10 @@ import 'src/features/reviews/reviews_page.dart';
 import 'src/features/sales/sales_page.dart';
 import 'src/features/splash/admin_splash_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AuthStorage.init();
+  await NotificationService.initialize();
   runApp(const TripNestApp());
 }
 
@@ -31,6 +36,7 @@ class TripNestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final base = ThemeData.light();
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'TripNest',
       theme: base.copyWith(

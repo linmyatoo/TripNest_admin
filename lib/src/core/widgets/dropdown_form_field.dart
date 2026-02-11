@@ -21,7 +21,7 @@ class WhiteDropdownFormField<T> extends StatelessWidget {
     return Theme(
       data: Theme.of(context).copyWith(canvasColor: Colors.white),
       child: DropdownButtonFormField<T>(
-        initialValue: value,
+        value: value,
         hint: hint,
         dropdownColor: Colors.white,
         decoration: decoration ?? const InputDecoration(),

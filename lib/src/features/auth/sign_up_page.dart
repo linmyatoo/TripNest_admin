@@ -14,7 +14,6 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final name = TextEditingController();
-  final phone_number = TextEditingController();
   final email = TextEditingController();
   final password = TextEditingController();
   bool _obscurePassword = true;
@@ -31,14 +30,6 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     // Validate inputs
-    if (name.text.trim().isEmpty) {
-      _showSnackBar('Please enter your name');
-      return;
-    }
-    if (phone_number.text.trim().isEmpty) {
-      _showSnackBar('Please enter your phone number');
-      return;
-    }
     if (email.text.trim().isEmpty) {
       _showSnackBar('Please enter your email');
       return;
@@ -52,11 +43,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       final result = await _apiService.register(
-        username: name.text.trim(),
-        phone_number: phone_number.text.trim(),
         email: email.text.trim(),
         password: password.text.trim(),
-        role: 'admin', // Admin role for admin app
+        name: name.text.trim().isNotEmpty ? name.text.trim() : null,
       );
 
       setState(() => _isLoading = false);
@@ -67,7 +56,7 @@ class _SignUpPageState extends State<SignUpPage> {
           showDialog(
             context: context,
             builder: (_) => _SignUpSuccessDialog(
-              username: name.text.trim(),
+              email: email.text.trim(),
             ),
           );
         }
@@ -106,39 +95,6 @@ class _SignUpPageState extends State<SignUpPage> {
                   "Join us today and unlock endless possibilities. It's quick, easy, and just a step away!",
                   style: TextStyle(color: Color(0xFF6B7280))),
               const SizedBox(height: 22),
-              const Text('Full Name',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              AppTextField(
-                hint: 'Enter your name',
-                controller: name,
-                textInputAction: TextInputAction.next,
-                prefix: const Icon(Icons.person_outline),
-              ),
-              const SizedBox(height: 16),
-              const Text('Phone Number',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              AppTextField(
-                hint: 'Enter your number',
-                controller: phone_number,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                prefix: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Image.asset('assets/images/flag_th.png',
-                        width: 22, height: 22),
-                    const SizedBox(width: 8),
-                    const Text('+66',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 8),
-                    const VerticalDivider(width: 1.0, thickness: 1.0),
-                    const SizedBox(width: 4),
-                  ]),
-                ),
-              ),
-              const SizedBox(height: 16),
               const Text('Email',
                   style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
@@ -148,6 +104,16 @@ class _SignUpPageState extends State<SignUpPage> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 prefix: const Icon(Icons.email_outlined),
+              ),
+              const SizedBox(height: 16),
+              const Text('Name (Optional)',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              AppTextField(
+                hint: 'Enter your name',
+                controller: name,
+                textInputAction: TextInputAction.next,
+                prefix: const Icon(Icons.person_outline),
               ),
               const SizedBox(height: 16),
               const Text('Password',
@@ -238,8 +204,8 @@ class _Blue extends StatelessWidget {
 }
 
 class _SignUpSuccessDialog extends StatelessWidget {
-  final String username;
-  const _SignUpSuccessDialog({required this.username});
+  final String email;
+  const _SignUpSuccessDialog({required this.email});
 
   @override
   Widget build(BuildContext context) {

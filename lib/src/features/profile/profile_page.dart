@@ -11,9 +11,55 @@ import 'personal_data_page.dart';
 import 'privacy_policy_page.dart';
 import 'security_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   static const route = '/profile';
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final _apiService = ApiService();
+  String _organizationName = 'Loading...';
+  String _email = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    // Get email from auth storage
+    final user = AuthStorage.getUser();
+    _email = user?['email'] ?? 'user@example.com';
+
+    // Fetch organizer profile
+    try {
+      final result = await _apiService.getOrganizerProfile();
+      if (result['success']) {
+        final data = result['data'];
+        setState(() {
+          _organizationName = data['organizationName'] != 'Not Set'
+              ? data['organizationName'] ?? 'Not Set'
+              : 'Not Set';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _organizationName = 'Not Set';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _organizationName = 'Not Set';
+        _isLoading = false;
+      });
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final apiService = ApiService();
@@ -59,11 +105,6 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get user data from auth storage
-    final user = AuthStorage.getUser();
-    final username = user?['username'] ?? 'User';
-    final email = user?['email'] ?? 'user@example.com';
-
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -80,11 +121,11 @@ class ProfilePage extends StatelessWidget {
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(username,
+                        Text(_isLoading ? 'Loading...' : _organizationName,
                             style: const TextStyle(
                                 fontSize: 20, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 2),
-                        Text(email,
+                        Text(_email,
                             style: const TextStyle(color: Color(0xFF6B7280))),
                       ]),
                 ),
@@ -102,8 +143,10 @@ class ProfilePage extends StatelessWidget {
             SettingsTile(
                 icon: Icons.person_outline,
                 label: 'Edit Profile',
-                onTap: () =>
-                    Navigator.pushNamed(context, PersonalDataPage.route)),
+                onTap: () async {
+                  await Navigator.pushNamed(context, PersonalDataPage.route);
+                  _loadProfile(); // Refresh after returning
+                }),
             const SizedBox(height: 10),
             SettingsTile(
                 icon: Icons.lock_outline,

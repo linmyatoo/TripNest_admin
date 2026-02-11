@@ -7,6 +7,8 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
+import '../../core/services/api_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/dropdown_form_field.dart';
@@ -25,6 +27,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
   final locationCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   final dateCtrl = TextEditingController();
+  final priceCtrl = TextEditingController();
+
+  final _apiService = ApiService();
+  bool _isLoading = false;
 
   String? category;
   final List<String> categories = const [
@@ -38,13 +44,93 @@ class _CreateEventPageState extends State<CreateEventPage> {
   ];
 
   final _picker = ImagePicker();
-  final List<File> _photos = []; // each ≤ 1MB
-  static const int _maxBytes = 1024 * 1024;
+  final List<File> _photos = []; // each ≤ 300KB
+  static const int _maxBytes = 300 * 1024; // 300KB to fit nginx limit
+  bool _isPickingImage = false; // Prevent multiple simultaneous picks
 
-  void _showSnack(String msg) {
+  void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(msg),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? Colors.red : null,
+      ),
     );
+  }
+
+  Future<void> _createEvent() async {
+    // Validation
+    final name = nameCtrl.text.trim();
+    final location = locationCtrl.text.trim();
+    final date = dateCtrl.text.trim();
+    final seatText = seatCtrl.text.trim();
+    final priceText = priceCtrl.text.trim();
+    final description = descCtrl.text.trim();
+
+    if (name.isEmpty) {
+      _showSnack('Please enter event name', isError: true);
+      return;
+    }
+    if (date.isEmpty) {
+      _showSnack('Please select a date', isError: true);
+      return;
+    }
+    if (location.isEmpty) {
+      _showSnack('Please enter location', isError: true);
+      return;
+    }
+    if (seatText.isEmpty) {
+      _showSnack('Please enter available seats', isError: true);
+      return;
+    }
+    if (priceText.isEmpty) {
+      _showSnack('Please enter price', isError: true);
+      return;
+    }
+
+    final capacity = int.tryParse(seatText);
+    if (capacity == null || capacity <= 0) {
+      _showSnack('Please enter a valid seat number', isError: true);
+      return;
+    }
+
+    final price = double.tryParse(priceText);
+    if (price == null || price < 0) {
+      _showSnack('Please enter a valid price', isError: true);
+      return;
+    }
+
+    // Convert date to ISO format (add time component)
+    final isoDate = '${date}T00:00:00.000Z';
+
+    setState(() => _isLoading = true);
+
+    final result = await _apiService.createEvent(
+      title: name,
+      description: description.isNotEmpty ? description : null,
+      date: isoDate,
+      location: location,
+      capacity: capacity,
+      price: price,
+      mood: category,
+      images: _photos.isNotEmpty ? _photos : null,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (result['success']) {
+      // Show native device notification and save to feed
+      await NotificationService.addNotification(
+        title: 'Event Created Successfully',
+        body: '"$name" has been published. Location: $location',
+      );
+
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/app', (_) => false);
+      }
+    } else {
+      _showSnack(result['message'] ?? 'Failed to create event', isError: true);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -63,38 +149,65 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   Future<void> _addFromGallery() async {
-    final XFile? x = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 100, maxWidth: 4096);
-    if (x == null) return;
-    final f = await _ensureUnder1MB(File(x.path));
-    if (f != null) setState(() => _photos.add(f));
+    if (_isPickingImage) return;
+    _isPickingImage = true;
+    try {
+      final List<XFile> files =
+          await _picker.pickMultiImage(imageQuality: 100, maxWidth: 4096);
+      if (files.isEmpty) return;
+      for (final x in files) {
+        final f = await _ensureUnderLimit(File(x.path));
+        if (f != null) {
+          setState(() => _photos.add(f));
+        }
+      }
+    } finally {
+      _isPickingImage = false;
+    }
   }
 
   Future<void> _addFromCamera() async {
-    final XFile? x = await _picker.pickImage(
-        source: ImageSource.camera, imageQuality: 100, maxWidth: 4096);
-    if (x == null) return;
-    final f = await _ensureUnder1MB(File(x.path));
-    if (f != null) setState(() => _photos.add(f));
+    if (_isPickingImage) return;
+    _isPickingImage = true;
+    try {
+      final XFile? x = await _picker.pickImage(
+          source: ImageSource.camera, imageQuality: 100, maxWidth: 4096);
+      if (x == null) return;
+      final f = await _ensureUnderLimit(File(x.path));
+      if (f != null) setState(() => _photos.add(f));
+    } finally {
+      _isPickingImage = false;
+    }
   }
 
   void _removePhoto(int i) => setState(() => _photos.removeAt(i));
 
   /// Ensure picked image ≤ 1MB (pure Dart compression to avoid CocoaPods issues)
-  Future<File?> _ensureUnder1MB(File file) async {
+  Future<File?> _ensureUnderLimit(File file) async {
     Uint8List bytes = await file.readAsBytes();
     if (bytes.lengthInBytes <= _maxBytes) return file;
 
     final decoded = img.decodeImage(bytes);
     if (decoded == null) {
-      _showSnack('Couldn’t read that image. Please choose a different file.');
+      _showSnack('Cannot read image. Please choose a different file.');
       return null;
     }
 
-    int quality = 85;
+    int quality = 60;
     int width = decoded.width;
     int height = decoded.height;
     img.Image current = decoded;
+
+    // Pre-resize if image is large
+    if (width > 1000 || height > 1000) {
+      final scale = 1000 / (width > height ? width : height);
+      width = (width * scale).round();
+      height = (height * scale).round();
+      current = img.copyResize(decoded,
+          width: width,
+          height: height,
+          interpolation: img.Interpolation.average);
+    }
 
     Future<File> _writeOut(Uint8List data) async {
       final dir = await getTemporaryDirectory();
@@ -112,25 +225,25 @@ class _CreateEventPageState extends State<CreateEventPage> {
         return _writeOut(encoded);
       }
 
-      if (quality > 50) {
+      if (quality > 30) {
         quality -= 10;
       } else {
-        final newW = (width * 0.85).round();
-        final newH = (height * 0.85).round();
-        if (newW < 600 || newH < 600) break;
+        final newW = (width * 0.75).round();
+        final newH = (height * 0.75).round();
+        if (newW < 300 || newH < 300) break;
         width = newW;
         height = newH;
-        current = img.copyResize(decoded,
+        current = img.copyResize(current,
             width: width,
             height: height,
             interpolation: img.Interpolation.average);
+        quality = 45;
       }
 
-      if (quality < 35 && (width < 700 || height < 700)) break;
+      if (quality < 25 && (width < 400 || height < 400)) break;
     }
 
-    _showSnack(
-        'Couldn’t keep the photo under 1MB. Please choose a smaller one.');
+    _showSnack('Photo is too large. Please choose a smaller image.');
     return null;
   }
 
@@ -177,7 +290,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
           const SizedBox(height: 16),
           const Text('Photos', style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          const Text('Max 1MB each',
+          const Text('Max 300KB each (auto-compressed)',
               style: TextStyle(color: Color(0xFF6B7280))),
           const SizedBox(height: 8),
           _PhotoGrid(
@@ -192,7 +305,20 @@ class _CreateEventPageState extends State<CreateEventPage> {
           const Text('Available seat',
               style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          AppTextField(hint: 'Seat', controller: seatCtrl),
+          AppTextField(
+            hint: 'Enter number of seats',
+            controller: seatCtrl,
+            keyboardType: TextInputType.number,
+          ),
+
+          const SizedBox(height: 16),
+          const Text('Price', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          AppTextField(
+            hint: 'Enter ticket price',
+            controller: priceCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          ),
 
           const SizedBox(height: 16),
           const Text('Date', style: TextStyle(fontWeight: FontWeight.w600)),
@@ -230,11 +356,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
           const SizedBox(height: 20),
           PrimaryButton(
-            label: 'Create event',
-            onPressed: () {
-              // TODO: send form + _photos to backend
-              _showSnack('Event created (mock). Photos: ${_photos.length}');
-            },
+            label: _isLoading ? 'Creating...' : 'Create event',
+            onPressed: _isLoading ? null : _createEvent,
           ),
         ]),
       ),

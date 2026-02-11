@@ -15,29 +15,59 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int idx = 0;
+  final _homeKey = GlobalKey<HomePageState>();
 
-  final pages = const [
-    HomePage(),
-    CreateEventPage(),
-    SalesPage(),
-    ProfilePage(),
-  ];
+  late final List<Widget> pages;
+
+  @override
+  void initState() {
+    super.initState();
+    pages = [
+      HomePage(key: _homeKey),
+      const CreateEventPage(),
+      const SalesPage(),
+      const ProfilePage(),
+    ];
+  }
+
+  void _onTabSelected(int i) {
+    setState(() => idx = i);
+    // Refresh home page when selecting home tab
+    if (i == 0) {
+      _homeKey.currentState?.refresh();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: pages[idx],
+      body: IndexedStack(
+        index: idx,
+        children: pages,
+      ),
       bottomNavigationBar: NavigationBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         indicatorColor: AppColors.primary.withOpacity(.12),
         selectedIndex: idx,
-        onDestinationSelected: (i) => setState(() => idx = i),
+        onDestinationSelected: _onTabSelected,
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.add_box_outlined), selectedIcon: Icon(Icons.add_box), label: 'Create'),
-          NavigationDestination(icon: Icon(Icons.local_offer_outlined), selectedIcon: Icon(Icons.local_offer), label: 'Sell'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'My Profile'),
+          NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home),
+              label: 'Home'),
+          NavigationDestination(
+              icon: Icon(Icons.add_box_outlined),
+              selectedIcon: Icon(Icons.add_box),
+              label: 'Create'),
+          NavigationDestination(
+              icon: Icon(Icons.local_offer_outlined),
+              selectedIcon: Icon(Icons.local_offer),
+              label: 'Sell'),
+          NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'My Profile'),
         ],
       ),
     );

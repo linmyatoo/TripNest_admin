@@ -1,34 +1,34 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
 import 'auth_storage.dart';
 
 class ApiService {
-  static const String baseUrl =
-      ' https://underground-brittni-tripnest-82c64bf9.koyeb.app/api';
+  static const String baseUrl = 'https://naylinhtet.me/api';
 
   // Register a new user
   Future<Map<String, dynamic>> register({
-    required String username,
-    required String phone_number,
     required String email,
     required String password,
-    String role = 'admin',
+    String? name,
   }) async {
     try {
+      final body = {
+        'email': email,
+        'password': password,
+      };
+      if (name != null && name.isNotEmpty) {
+        body['name'] = name;
+      }
+
       final response = await http.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'username': username,
-          'phone_number': phone_number,
-          'email': email,
-          'password': password,
-          'role': role,
-        }),
+        body: jsonEncode(body),
       );
 
       final data = jsonDecode(response.body);
@@ -36,12 +36,16 @@ class ApiService {
       if (response.statusCode == 201) {
         return {
           'success': true,
-          'data': data,
+          'token': data['token'],
+          'userId': data['userId'],
+          'email': data['email'],
+          'expiresIn': data['expiresIn'],
+          'message': data['message'] ?? 'Registration successful',
         };
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Registration failed',
+          'message': data['error'] ?? 'Registration failed',
         };
       }
     } catch (e) {
@@ -74,12 +78,16 @@ class ApiService {
       if (response.statusCode == 200) {
         return {
           'success': true,
-          'data': data,
+          'token': data['token'],
+          'userId': data['userId'],
+          'email': data['email'],
+          'expiresIn': data['expiresIn'],
+          'message': data['message'] ?? 'Login successful',
         };
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Login failed',
+          'message': data['error'] ?? 'Invalid email or password',
         };
       }
     } catch (e) {
@@ -135,6 +143,54 @@ class ApiService {
     }
   }
 
+  // Change password
+  Future<Map<String, dynamic>> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+        body: jsonEncode({
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Password changed successfully',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to change password',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   // Get user profile
   Future<Map<String, dynamic>> getUserProfile() async {
     try {
@@ -176,6 +232,104 @@ class ApiService {
     }
   }
 
+  // Get organizer profile
+  Future<Map<String, dynamic>> getOrganizerProfile() async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/organizers/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': data,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Failed to fetch organizer profile',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Create/Update organizer profile
+  Future<Map<String, dynamic>> createOrganizerProfile({
+    String? organizationName,
+    String? contactNumber,
+    String? address,
+  }) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final body = <String, dynamic>{};
+      if (organizationName != null && organizationName.isNotEmpty) {
+        body['organizationName'] = organizationName;
+      }
+      if (contactNumber != null && contactNumber.isNotEmpty) {
+        body['contactNumber'] = contactNumber;
+      }
+      if (address != null && address.isNotEmpty) {
+        body['address'] = address;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/organizers'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+        body: jsonEncode(body),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return {
+          'success': true,
+          'data': data,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to save organizer profile',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Forgot password - sends reset link to email
   static Future<Map<String, dynamic>> forgotPassword({
     required String email,
@@ -191,54 +345,206 @@ class ApiService {
         }),
       );
 
-      print('=================================');
-      print('FORGOT PASSWORD RESPONSE');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-      print('=================================');
-
-      // Handle server errors
-      if (response.statusCode >= 500) {
-        throw Exception('Server error. Please try again later.');
-      }
-
-      // Handle empty response
-      if (response.body.isEmpty) {
-        if (response.statusCode == 200) {
-          return {'success': true, 'message': 'Reset link sent to your email'};
-        } else {
-          throw Exception('Failed to send reset link');
-        }
-      }
-
-      // Try to parse JSON response
-      Map<String, dynamic> data;
-      try {
-        data = jsonDecode(response.body);
-      } catch (e) {
-        print('JSON Parse Error: $e');
-
-        if (response.body.contains('<!DOCTYPE html>') ||
-            response.body.contains('<html>')) {
-          throw Exception('Server error occurred. Please try again later.');
-        }
-
-        throw Exception('Invalid server response');
-      }
+      final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        return data;
+        return {
+          'success': true,
+          'message': data['message'] ??
+              'If this email exists, a reset link has been sent',
+        };
       } else {
-        throw Exception(data['message'] ?? 'Failed to send reset link');
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to send reset link',
+        };
       }
-    } on FormatException catch (e) {
-      print('Format Exception: $e');
-      throw Exception('Server response format error');
     } catch (e) {
-      if (e.toString().contains('Exception:')) {
-        rethrow;
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get dashboard events (event revenue breakdown)
+  Future<Map<String, dynamic>> getDashboardEvents() async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
       }
-      throw Exception('Network error: ${e.toString()}');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/events'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      // Debug logging
+      print('Dashboard events status: ${response.statusCode}');
+      print('Dashboard events body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'organizer': data['organizer'],
+          'events': data['events'] ?? [],
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch events',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get all my events (for organizer)
+  Future<Map<String, dynamic>> getMyEvents() async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/events'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      print('My events status: ${response.statusCode}');
+      print('My events body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Handle both array response and object with events key
+        final events = data is List ? data : (data['events'] ?? data);
+        return {
+          'success': true,
+          'events': events is List ? events : [],
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch events',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Create a new event with file uploads
+  Future<Map<String, dynamic>> createEvent({
+    required String title,
+    String? description,
+    required String date,
+    required String location,
+    required int capacity,
+    required double price,
+    String? mood,
+    List<File>? images,
+  }) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/events'),
+      );
+
+      request.headers['Authorization'] = token;
+
+      // Add text fields
+      request.fields['title'] = title;
+      request.fields['date'] = date;
+      request.fields['location'] = location;
+      request.fields['capacity'] = capacity.toString();
+      request.fields['price'] = price.toString();
+
+      if (description != null && description.isNotEmpty) {
+        request.fields['description'] = description;
+      }
+      if (mood != null && mood.isNotEmpty) {
+        request.fields['mood'] = mood;
+      }
+
+      // Add image files
+      if (images != null && images.isNotEmpty) {
+        for (final file in images) {
+          final multipartFile = await http.MultipartFile.fromPath(
+            'images',
+            file.path,
+          );
+          request.files.add(multipartFile);
+        }
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      // Debug: print response for troubleshooting
+      print('Create event status: ${response.statusCode}');
+      print('Create event body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'event': data,
+          'message': 'Event created successfully',
+        };
+      } else {
+        try {
+          final data = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': data['error'] ?? 'Failed to create event',
+          };
+        } catch (_) {
+          return {
+            'success': false,
+            'message': 'Server error (${response.statusCode})',
+          };
+        }
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
     }
   }
 }

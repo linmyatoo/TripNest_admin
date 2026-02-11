@@ -41,21 +41,25 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     });
 
     try {
-      await ApiService.forgotPassword(email: email);
+      final result = await ApiService.forgotPassword(email: email);
 
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
 
-        // Show success dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => _ForgotPasswordSuccessDialog(
-            email: email,
-          ),
-        );
+        if (result['success']) {
+          // Show success dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => _ForgotPasswordSuccessDialog(
+              email: email,
+            ),
+          );
+        } else {
+          _showError(result['message'] ?? 'Failed to send reset link');
+        }
       }
     } catch (e) {
       if (mounted) {
