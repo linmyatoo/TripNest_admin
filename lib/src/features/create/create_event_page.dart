@@ -15,7 +15,8 @@ import '../../core/widgets/dropdown_form_field.dart';
 
 class CreateEventPage extends StatefulWidget {
   static const route = '/create-event';
-  const CreateEventPage({super.key});
+  final String? eventId;
+  const CreateEventPage({super.key, this.eventId});
 
   @override
   State<CreateEventPage> createState() => _CreateEventPageState();
@@ -31,6 +32,9 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
   final _apiService = ApiService();
   bool _isLoading = false;
+  bool _isFetchingEvent = false;
+
+  bool get _isEditMode => widget.eventId != null;
 
   String? category;
   final List<String> categories = const [
@@ -47,6 +51,56 @@ class _CreateEventPageState extends State<CreateEventPage> {
   final List<File> _photos = []; // each ≤ 300KB
   static const int _maxBytes = 300 * 1024; // 300KB to fit nginx limit
   bool _isPickingImage = false; // Prevent multiple simultaneous picks
+  List<String> _existingImageUrls = []; // URLs of already uploaded images
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditMode) {
+      _fetchEventData();
+    }
+  }
+
+  Future<void> _fetchEventData() async {
+    setState(() => _isFetchingEvent = true);
+
+    final result = await _apiService.getEventById(widget.eventId!);
+
+    if (mounted) {
+      setState(() {
+        _isFetchingEvent = false;
+        if (result['success']) {
+          final event = result['event'] as Map<String, dynamic>;
+          nameCtrl.text = event['title'] ?? '';
+          descCtrl.text = event['description'] ?? '';
+          locationCtrl.text = event['location'] ?? '';
+          seatCtrl.text = (event['capacity'] ?? '').toString();
+          priceCtrl.text = (event['price'] ?? '').toString();
+          category = event['mood'];
+
+          // Parse date from ISO format
+          final dateStr = event['date'] as String?;
+          if (dateStr != null && dateStr.isNotEmpty) {
+            try {
+              final date = DateTime.parse(dateStr);
+              dateCtrl.text =
+                  '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+            } catch (_) {}
+          }
+
+          // Store existing image URLs
+          final images = event['images'] as List?;
+          if (images != null) {
+            _existingImageUrls = images
+                .map((e) =>
+                    e is Map ? e['imageUrl']?.toString() ?? '' : e.toString())
+                .where((url) => url.isNotEmpty)
+                .toList();
+          }
+        }
+      });
+    }
+  }
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -105,31 +159,54 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
     setState(() => _isLoading = true);
 
-    final result = await _apiService.createEvent(
-      title: name,
-      description: description.isNotEmpty ? description : null,
-      date: isoDate,
-      location: location,
-      capacity: capacity,
-      price: price,
-      mood: category,
-      images: _photos.isNotEmpty ? _photos : null,
-    );
+    Map<String, dynamic> result;
+
+    if (_isEditMode) {
+      // Update existing event
+      result = await _apiService.updateEvent(
+        eventId: widget.eventId!,
+        title: name,
+        description: description.isNotEmpty ? description : null,
+        date: isoDate,
+        location: location,
+        capacity: capacity,
+        price: price,
+        mood: category,
+      );
+    } else {
+      // Create new event
+      result = await _apiService.createEvent(
+        title: name,
+        description: description.isNotEmpty ? description : null,
+        date: isoDate,
+        location: location,
+        capacity: capacity,
+        price: price,
+        mood: category,
+        images: _photos.isNotEmpty ? _photos : null,
+      );
+    }
 
     setState(() => _isLoading = false);
 
     if (result['success']) {
       // Show native device notification and save to feed
       await NotificationService.addNotification(
-        title: 'Event Created Successfully',
-        body: '"$name" has been published. Location: $location',
+        title: _isEditMode
+            ? 'Event Updated Successfully'
+            : 'Event Created Successfully',
+        body:
+            '"$name" has been ${_isEditMode ? 'updated' : 'published'}. Location: $location',
       );
 
       if (mounted) {
         Navigator.pushNamedAndRemoveUntil(context, '/app', (_) => false);
       }
     } else {
-      _showSnack(result['message'] ?? 'Failed to create event', isError: true);
+      _showSnack(
+          result['message'] ??
+              'Failed to ${_isEditMode ? 'update' : 'create'} event',
+          isError: true);
     }
   }
 
@@ -262,105 +339,135 @@ class _CreateEventPageState extends State<CreateEventPage> {
           onPressed: () =>
               Navigator.pushNamedAndRemoveUntil(context, '/app', (_) => false),
         ),
-        title: const Text('Create your event'),
+        title: Text(_isEditMode ? 'Edit your event' : 'Create your event'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Event Name',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          // (keeping Figma text)
-          AppTextField(hint: 'Your enent name', controller: nameCtrl),
+      body: _isFetchingEvent
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Event Name',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    // (keeping Figma text)
+                    AppTextField(hint: 'Your enent name', controller: nameCtrl),
 
-          const SizedBox(height: 16),
-          const Text('Catagory', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          WhiteDropdownFormField<String>(
-            value: category,
-            hint: const Text('Mood'),
-            decoration:
-                const InputDecoration(), // picks up global white+outline
-            items: categories
-                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                .toList(),
-            onChanged: (v) => setState(() => category = v),
-          ),
+                    const SizedBox(height: 16),
+                    const Text('Catagory',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    WhiteDropdownFormField<String>(
+                      value: category,
+                      hint: const Text('Mood'),
+                      decoration:
+                          const InputDecoration(), // picks up global white+outline
+                      items: categories
+                          .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) => setState(() => category = v),
+                    ),
 
-          const SizedBox(height: 16),
-          const Text('Photos', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('Max 300KB each (auto-compressed)',
-              style: TextStyle(color: Color(0xFF6B7280))),
-          const SizedBox(height: 8),
-          _PhotoGrid(
-            photos: _photos,
-            sizeLabelFor: _prettySize,
-            onRemove: _removePhoto,
-            onAddGallery: _addFromGallery,
-            onAddCamera: _addFromCamera,
-          ),
+                    const SizedBox(height: 16),
+                    const Text('Photos',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    const Text('Max 300KB each (auto-compressed)',
+                        style: TextStyle(color: Color(0xFF6B7280))),
+                    const SizedBox(height: 8),
+                    // Show existing images if editing
+                    if (_existingImageUrls.isNotEmpty) ...[
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children:
+                            _existingImageUrls.asMap().entries.map((entry) {
+                          return _ExistingImageTile(
+                            imageUrl: entry.value,
+                            onDelete: () => setState(
+                                () => _existingImageUrls.removeAt(entry.key)),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    _PhotoGrid(
+                      photos: _photos,
+                      sizeLabelFor: _prettySize,
+                      onRemove: _removePhoto,
+                      onAddGallery: _addFromGallery,
+                      onAddCamera: _addFromCamera,
+                    ),
 
-          const SizedBox(height: 16),
-          const Text('Available seat',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          AppTextField(
-            hint: 'Enter number of seats',
-            controller: seatCtrl,
-            keyboardType: TextInputType.number,
-          ),
+                    const SizedBox(height: 16),
+                    const Text('Available seat',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    AppTextField(
+                      hint: 'Enter number of seats',
+                      controller: seatCtrl,
+                      keyboardType: TextInputType.number,
+                    ),
 
-          const SizedBox(height: 16),
-          const Text('Price', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          AppTextField(
-            hint: 'Enter ticket price',
-            controller: priceCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          ),
+                    const SizedBox(height: 16),
+                    const Text('Price',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    AppTextField(
+                      hint: 'Enter ticket price',
+                      controller: priceCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                    ),
 
-          const SizedBox(height: 16),
-          const Text('Date', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: dateCtrl,
-            readOnly: true,
-            onTap: _pickDate,
-            decoration: const InputDecoration(
-              hintText: 'Choose the date',
-              suffixIcon: Icon(Icons.calendar_today_outlined),
+                    const SizedBox(height: 16),
+                    const Text('Date',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: dateCtrl,
+                      readOnly: true,
+                      onTap: _pickDate,
+                      decoration: const InputDecoration(
+                        hintText: 'Choose the date',
+                        suffixIcon: Icon(Icons.calendar_today_outlined),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                    const Text('Location',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: locationCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Choose the location',
+                        suffixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+                    const Text('Description',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: descCtrl,
+                      maxLines: 5,
+                      decoration:
+                          const InputDecoration(hintText: 'Description'),
+                    ),
+
+                    const SizedBox(height: 20),
+                    PrimaryButton(
+                      label: _isLoading
+                          ? (_isEditMode ? 'Updating...' : 'Creating...')
+                          : (_isEditMode ? 'Update event' : 'Create event'),
+                      onPressed: _isLoading ? null : _createEvent,
+                    ),
+                  ]),
             ),
-          ),
-
-          const SizedBox(height: 16),
-          const Text('Location', style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: locationCtrl,
-            decoration: const InputDecoration(
-              hintText: 'Choose the location',
-              suffixIcon: Icon(Icons.location_on_outlined),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          const Text('Description',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: descCtrl,
-            maxLines: 5,
-            decoration: const InputDecoration(hintText: 'Description'),
-          ),
-
-          const SizedBox(height: 20),
-          PrimaryButton(
-            label: _isLoading ? 'Creating...' : 'Create event',
-            onPressed: _isLoading ? null : _createEvent,
-          ),
-        ]),
-      ),
     );
   }
 }
@@ -477,6 +584,51 @@ class _ThumbTile extends StatelessWidget {
             ),
             child: Text(sizeText,
                 style: const TextStyle(color: Colors.white, fontSize: 10)),
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: InkWell(
+            onTap: onDelete,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.close, size: 16, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExistingImageTile extends StatelessWidget {
+  final String imageUrl;
+  final VoidCallback onDelete;
+  const _ExistingImageTile({required this.imageUrl, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            imageUrl,
+            width: 96,
+            height: 96,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              width: 96,
+              height: 96,
+              color: Colors.grey[200],
+              child: const Icon(Icons.image, color: Colors.grey),
+            ),
           ),
         ),
         Positioned(

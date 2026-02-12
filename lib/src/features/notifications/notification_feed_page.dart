@@ -59,16 +59,6 @@ class _NotificationFeedPageState extends State<NotificationFeedPage> {
       appBar: AppBar(
         leading: const BackButton(),
         title: const Text('Notification'),
-        actions: [
-          if (_notifications.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () async {
-                await NotificationService.clearAll();
-                _loadNotifications();
-              },
-            ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

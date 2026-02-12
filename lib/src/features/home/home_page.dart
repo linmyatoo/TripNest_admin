@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/services/air_quality_service.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_colors.dart';
 
@@ -17,16 +18,26 @@ class HomePageState extends State<HomePage> {
   Map<String, dynamic>? _organizer;
   bool _isLoading = true;
   String? _error;
+  AirQualityData? _airQuality;
 
   @override
   void initState() {
     super.initState();
     _fetchEvents();
+    _fetchAirQuality();
   }
 
   /// Public method to refresh events (called from AppShell)
   void refresh() {
     _fetchEvents();
+    _fetchAirQuality();
+  }
+
+  Future<void> _fetchAirQuality() async {
+    final aqData = await AirQualityService.getAirQuality();
+    if (mounted && aqData != null) {
+      setState(() => _airQuality = aqData);
+    }
   }
 
   Future<void> _fetchEvents() async {
@@ -61,7 +72,10 @@ class HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Header(organizerName: _organizer?['organizationName']),
+            _Header(
+              organizerName: _organizer?['organizationName'],
+              airQuality: _airQuality,
+            ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -135,7 +149,17 @@ class HomePageState extends State<HomePage> {
 
 class _Header extends StatelessWidget {
   final String? organizerName;
-  const _Header({this.organizerName});
+  final AirQualityData? airQuality;
+  const _Header({this.organizerName, this.airQuality});
+
+  Color _getAqiColor(int aqi) {
+    if (aqi <= 50) return Colors.green;
+    if (aqi <= 100) return Colors.yellow.shade700;
+    if (aqi <= 150) return Colors.orange;
+    if (aqi <= 200) return Colors.red;
+    if (aqi <= 300) return Colors.purple;
+    return Colors.brown;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,15 +176,48 @@ class _Header extends StatelessWidget {
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
-            const Row(children: [
-              Icon(Icons.location_on_outlined,
+            Row(children: [
+              const Icon(Icons.location_on_outlined,
                   size: 16, color: AppColors.muted),
-              SizedBox(width: 4),
-              Text('Chiang Rai , Thailand',
-                  style: TextStyle(color: AppColors.muted)),
+              const SizedBox(width: 4),
+              Text(airQuality?.cityName ?? 'Chiang Rai, Thailand',
+                  style: const TextStyle(color: AppColors.muted)),
             ]),
           ]),
         ),
+        // Air Quality Badge
+        if (airQuality != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            margin: const EdgeInsets.only(right: 4),
+            decoration: BoxDecoration(
+              color: _getAqiColor(airQuality!.aqi).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: _getAqiColor(airQuality!.aqi).withOpacity(0.3)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'AQI',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: _getAqiColor(airQuality!.aqi),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  airQuality!.aqi.toString(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _getAqiColor(airQuality!.aqi),
+                  ),
+                ),
+              ],
+            ),
+          ),
         IconButton(
             onPressed: () =>
                 Navigator.pushNamed(context, '/notifications-feed'),
@@ -245,7 +302,11 @@ class _EventCardState extends State<_EventCard> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.pushNamed(context, '/reviews'),
+        onTap: () => Navigator.pushNamed(
+          context,
+          '/reviews',
+          arguments: {'eventId': event['eventId']?.toString()},
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -301,8 +362,13 @@ class _EventCardState extends State<_EventCard> {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(8),
                               onTap: () {
-                                // TODO: Navigate to edit event page
-                                Navigator.pushNamed(context, '/create-event');
+                                Navigator.pushNamed(
+                                  context,
+                                  '/create-event',
+                                  arguments: {
+                                    'eventId': event['eventId']?.toString()
+                                  },
+                                );
                               },
                               child: const Padding(
                                 padding: EdgeInsets.symmetric(
@@ -373,7 +439,7 @@ class _EventCardState extends State<_EventCard> {
                       _StatItem(
                         icon: Icons.attach_money,
                         label: 'Revenue',
-                        value: '\$${totalRevenue.toStringAsFixed(2)}',
+                        value: '฿${totalRevenue.toStringAsFixed(2)}',
                       ),
                       _StatItem(
                         icon: Icons.bookmark_outline,

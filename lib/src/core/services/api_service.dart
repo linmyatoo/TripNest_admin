@@ -367,6 +367,53 @@ class ApiService {
     }
   }
 
+  // Get dashboard revenue totals
+  Future<Map<String, dynamic>> getDashboardRevenue() async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/revenue'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      print('Dashboard revenue status: ${response.statusCode}');
+      print('Dashboard revenue body: ${response.body}');
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'organizer': data['organizer'],
+          'totalRevenue': (data['totalRevenue'] ?? 0).toDouble(),
+          'totalBookings': data['totalBookings'] ?? 0,
+          'totalTickets': data['totalTickets'] ?? 0,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch revenue',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   // Get dashboard events (event revenue breakdown)
   Future<Map<String, dynamic>> getDashboardEvents() async {
     try {
@@ -403,6 +450,47 @@ class ApiService {
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch events',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get event by ID
+  Future<Map<String, dynamic>> getEventById(String eventId) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/events/$eventId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'event': data,
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch event',
         };
       }
     } catch (e) {
@@ -539,6 +627,158 @@ class ApiService {
             'message': 'Server error (${response.statusCode})',
           };
         }
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Update an event
+  Future<Map<String, dynamic>> updateEvent({
+    required String eventId,
+    String? title,
+    String? description,
+    String? date,
+    String? location,
+    int? capacity,
+    double? price,
+    String? mood,
+  }) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final body = <String, dynamic>{};
+      if (title != null) body['title'] = title;
+      if (description != null) body['description'] = description;
+      if (date != null) body['date'] = date;
+      if (location != null) body['location'] = location;
+      if (capacity != null) body['capacity'] = capacity;
+      if (price != null) body['price'] = price;
+      if (mood != null) body['mood'] = mood;
+
+      final response = await http.patch(
+        Uri.parse('$baseUrl/events/$eventId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+        body: jsonEncode(body),
+      );
+
+      print('Update event status: ${response.statusCode}');
+      print('Update event body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'event': data,
+          'message': 'Event updated successfully',
+        };
+      } else {
+        try {
+          final data = jsonDecode(response.body);
+          return {
+            'success': false,
+            'message': data['error'] ?? 'Failed to update event',
+          };
+        } catch (_) {
+          return {
+            'success': false,
+            'message': 'Server error (${response.statusCode})',
+          };
+        }
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get reviews for an event
+  Future<Map<String, dynamic>> getEventReviews(String eventId) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/reviews/event/$eventId'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'reviews': data is List ? data : [],
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch reviews',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get all chat rooms
+  Future<Map<String, dynamic>> getChatRooms() async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'Not authenticated',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/chat/rooms'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'rooms': data['rooms'] ?? [],
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch chat rooms',
+        };
       }
     } catch (e) {
       return {

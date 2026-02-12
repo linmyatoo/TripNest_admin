@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/api_service.dart';
 import '../../core/services/auth_storage.dart';
 import '../../core/widgets/settings_tile.dart';
-import '../notifications/notification_feed_page.dart';
+// import '../notifications/notification_feed_page.dart';
 import 'change_password_page.dart';
 import 'help_center_page.dart';
 import 'notifications_settings_page.dart';
@@ -129,11 +129,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             style: const TextStyle(color: Color(0xFF6B7280))),
                       ]),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.notifications_none_rounded),
-                  onPressed: () =>
-                      Navigator.pushNamed(context, NotificationFeedPage.route),
-                ),
               ],
             ),
             const SizedBox(height: 18),
@@ -161,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     context, NotificationsSettingsPage.route)),
             const SizedBox(height: 10),
             SettingsTile(
-                icon: Icons.shield_outlined,
+                icon: Icons.security_outlined,
                 label: 'Security',
                 onTap: () => Navigator.pushNamed(context, SecurityPage.route)),
             const SizedBox(height: 18),
@@ -175,7 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Navigator.pushNamed(context, PrivacyPolicyPage.route)),
             const SizedBox(height: 10),
             SettingsTile(
-                icon: Icons.help_outline_rounded,
+                icon: Icons.help_outline,
                 label: 'Help & Support',
                 onTap: () =>
                     Navigator.pushNamed(context, HelpCenterPage.route)),

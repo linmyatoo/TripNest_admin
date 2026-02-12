@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/app_shell.dart';
+import 'src/core/services/air_quality_service.dart';
 import 'src/core/services/auth_storage.dart';
 import 'src/core/services/notification_service.dart';
 import 'src/core/theme/app_colors.dart';
@@ -26,6 +27,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AuthStorage.init();
   await NotificationService.initialize();
+  // Check air quality and notify if needed
+  AirQualityService.checkAndNotify();
   runApp(const TripNestApp());
 }
 
@@ -99,10 +102,18 @@ class TripNestApp extends StatelessWidget {
         ForgotPasswordPage.route: (_) => const ForgotPasswordPage(),
         AppShell.route: (_) => const AppShell(),
         HomePage.route: (_) => const HomePage(),
-        ReviewsPage.route: (_) => const ReviewsPage(),
+        ReviewsPage.route: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return ReviewsPage(eventId: args?['eventId']);
+        },
         SalesPage.route: (_) => const SalesPage(),
         ProfilePage.route: (_) => const ProfilePage(),
-        CreateEventPage.route: (_) => const CreateEventPage(),
+        CreateEventPage.route: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return CreateEventPage(eventId: args?['eventId']);
+        },
         PersonalDataPage.route: (_) => const PersonalDataPage(),
         SecurityPage.route: (_) => const SecurityPage(),
         NotificationsSettingsPage.route: (_) =>
