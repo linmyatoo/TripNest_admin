@@ -44,7 +44,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
     'Romance',
     'Energetic',
     'Cultural',
-    'Fun'
+    'Fun',
+    'Festival'
   ];
 
   final _picker = ImagePicker();
@@ -352,10 +353,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     // (keeping Figma text)
-                    AppTextField(hint: 'Your enent name', controller: nameCtrl),
+                    AppTextField(hint: 'Your event name', controller: nameCtrl),
 
                     const SizedBox(height: 16),
-                    const Text('Catagory',
+                    const Text('Category',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     WhiteDropdownFormField<String>(
