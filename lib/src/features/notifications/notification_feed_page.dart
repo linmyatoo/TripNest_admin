@@ -117,6 +117,30 @@ class _Label extends StatelessWidget {
 
 /// iPhone-like card WITHOUT app name/logo — just Title, Time (right), Body.
 class _SimpleNotificationCard extends StatelessWidget {
+  /// Parse AQI value from body text (format: "AQI: 125 (...")
+  int? _parseAqi() {
+    final match = RegExp(r'AQI:\s*(\d+)').firstMatch(body);
+    if (match != null) {
+      return int.tryParse(match.group(1) ?? '');
+    }
+    return null;
+  }
+
+  /// Get title color based on notification type
+  Color _getTitleColor(int? aqi) {
+    // If this is an event creation notification, set to blue
+    if (title.toLowerCase().contains('event created') ||
+        title.toLowerCase().contains('event has been created') ||
+        body.toLowerCase().contains('event has been created')) {
+      return const Color(0xFF2563EB); // Blue
+    }
+    // Otherwise, use AQI logic
+    if (aqi == null) return const Color(0xFF16A34A); // Default green
+    if (aqi <= 50) return const Color(0xFF16A34A); // Green - Good
+    if (aqi <= 100) return const Color(0xFFCA8A04); // Yellow - Moderate
+    return const Color(0xFFDC2626); // Red - Unhealthy
+  }
+
   final String title;
   final String body;
   final String time;
@@ -130,7 +154,8 @@ class _SimpleNotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-
+    final aqi = _parseAqi();
+    final titleColor = _getTitleColor(aqi);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
@@ -166,12 +191,12 @@ class _SimpleNotificationCard extends StatelessWidget {
                         title,
                         style: text.titleMedium?.copyWith(
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF111827),
+                              color: titleColor,
                             ) ??
-                            const TextStyle(
+                            TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF111827),
+                              color: titleColor,
                             ),
                       ),
                     ),

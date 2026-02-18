@@ -15,6 +15,8 @@ class _ReviewsPageState extends State<ReviewsPage> {
   final _apiService = ApiService();
   Map<String, dynamic>? _event;
   List<dynamic> _reviews = [];
+  Map<String, dynamic>? _sentiment;
+  List<dynamic> _sentimentReviews = [];
   bool _isLoading = true;
   bool _showAllReviews = false;
 
@@ -33,16 +35,18 @@ class _ReviewsPageState extends State<ReviewsPage> {
     final results = await Future.wait([
       _apiService.getEventById(widget.eventId!),
       _apiService.getEventReviews(widget.eventId!),
+      _apiService.getEventSentimentSummary(widget.eventId!),
+      _apiService.getEventSentimentReviews(widget.eventId!),
     ]);
 
     if (mounted) {
       setState(() {
         _isLoading = false;
-        if (results[0]['success']) {
-          _event = results[0]['event'];
-        }
-        if (results[1]['success']) {
-          _reviews = results[1]['reviews'] ?? [];
+        if (results[0]['success']) _event = results[0]['event'];
+        if (results[1]['success']) _reviews = results[1]['reviews'] ?? [];
+        if (results[2]['success']) _sentiment = results[2]['data'];
+        if (results[3]['success']) {
+          _sentimentReviews = results[3]['sentiments'] ?? [];
         }
       });
     }
@@ -61,7 +65,10 @@ class _ReviewsPageState extends State<ReviewsPage> {
               children: [
                 _EventStrip(event: _event),
                 const SizedBox(height: 16),
-                _SummaryCard(),
+                _SummaryCard(
+                  sentiment: _sentiment,
+                  sentimentReviews: _sentimentReviews,
+                ),
                 const SizedBox(height: 16),
                 _LatestReviewsSection(
                   reviews: _reviews,
@@ -76,6 +83,10 @@ class _ReviewsPageState extends State<ReviewsPage> {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Event strip
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _EventStrip extends StatefulWidget {
   final Map<String, dynamic>? event;
@@ -92,9 +103,7 @@ class _EventStripState extends State<_EventStrip> {
     final images = widget.event?['images'] as List?;
     if (images != null && images.isNotEmpty) {
       final first = images.first;
-      if (first is Map) {
-        return first['imageUrl']?.toString();
-      }
+      if (first is Map) return first['imageUrl']?.toString();
       return first.toString();
     }
     return null;
@@ -200,9 +209,28 @@ class _EventStripState extends State<_EventStrip> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Summary card
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _SummaryCard extends StatelessWidget {
+  final Map<String, dynamic>? sentiment;
+  final List<dynamic> sentimentReviews;
+
+  const _SummaryCard({
+    this.sentiment,
+    required this.sentimentReviews,
+  });
+
   @override
   Widget build(BuildContext context) {
+    // Keep only NEGATIVE entries that carry a meaningful negativeSummary.
+    final negativeItems = sentimentReviews
+        .where((s) =>
+            s['label'] == 'NEGATIVE' &&
+            (s['negativeSummary'] as String?)?.isNotEmpty == true)
+        .toList();
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -210,27 +238,121 @@ class _SummaryCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Summarized reviews',
+          const Text('Summarized reviews',
               style: TextStyle(fontWeight: FontWeight.w700)),
-          SizedBox(height: 10),
-          Text('Reviews analyzed: 214 (negatives: 42 → 19.6%)',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          SizedBox(height: 10),
-          _Issue('Refund process unclear', "Didn't see refund info."),
-          _Issue('Music too loud near stage (19:00–21:00)',
-              '"Had to raise my voice.", "Speaker above us."'),
+          const SizedBox(height: 10),
+
+          // ── Sentiment stats ───────────────────────────────────────────────
+          if (sentiment == null)
+            const Text(
+              'Sentiment data unavailable.',
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            )
+          else ...[
+            _SentimentStats(sentiment: sentiment!),
+            const SizedBox(height: 10),
+          ],
+
+          // ── Dynamic issues from sentiment reviews API ─────────────────────
+          if (negativeItems.isEmpty)
+            const Text(
+              'No issues reported.',
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            )
+          else
+            ...negativeItems.map(
+              (s) => _Issue(s['negativeSummary'] as String),
+            ),
         ],
       ),
     );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Sentiment stats chips
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SentimentStats extends StatelessWidget {
+  final Map<String, dynamic> sentiment;
+  const _SentimentStats({required this.sentiment});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = sentiment['totalReviews'] as int? ?? 0;
+    final analyzed = sentiment['analyzedCount'] as int? ?? 0;
+    final positive = sentiment['positiveCount'] as int? ?? 0;
+    final negative = sentiment['negativeCount'] as int? ?? 0;
+    final neutral = sentiment['neutralCount'] as int? ?? 0;
+    final score = (sentiment['averageScore'] as num?)?.toDouble() ?? 0.0;
+
+    final negPct =
+        analyzed > 0 ? ((negative / analyzed) * 100).toStringAsFixed(1) : '0';
+    final posPct =
+        analyzed > 0 ? ((positive / analyzed) * 100).toStringAsFixed(1) : '0';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Reviews analyzed: $analyzed / $total  '
+          '(negatives: $negative → $negPct%)',
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            _SentimentChip(
+                label: '👍 $positive positive ($posPct%)', color: Colors.green),
+            _SentimentChip(
+                label: '👎 $negative negative ($negPct%)', color: Colors.red),
+            if (neutral > 0)
+              _SentimentChip(label: '😐 $neutral neutral', color: Colors.grey),
+            _SentimentChip(
+                label: 'Score: ${score.toStringAsFixed(2)}',
+                color: AppColors.primary),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SentimentChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _SentimentChip({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style:
+            TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Issue — issue label only, evidence removed
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _Issue extends StatelessWidget {
-  final String title, evidence;
-  const _Issue(this.title, this.evidence);
+  final String title;
+  const _Issue(this.title);
 
   @override
   Widget build(BuildContext context) {
@@ -241,21 +363,20 @@ class _Issue extends StatelessWidget {
           style: const TextStyle(color: AppColors.textPrimary),
           children: [
             const TextSpan(
-                text: 'Issue: ',
-                style:
-                    TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
-            TextSpan(text: '$title\n'),
-            const TextSpan(
-                text: 'Evidence: ',
-                style: TextStyle(
-                    color: AppColors.warning, fontWeight: FontWeight.w700)),
-            TextSpan(text: evidence),
+              text: 'Issue: ',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700),
+            ),
+            TextSpan(text: title),
           ],
         ),
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Latest reviews section (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _LatestReviewsSection extends StatelessWidget {
   final List<dynamic> reviews;
@@ -284,9 +405,7 @@ class _LatestReviewsSection extends StatelessWidget {
               child: Text(
                 showAll ? 'Show less' : 'See All',
                 style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: AppColors.primary, fontWeight: FontWeight.w600),
               ),
             ),
         ]),
@@ -365,18 +484,15 @@ class _ReviewTile extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          rating.toStringAsFixed(1),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        Text(rating.toStringAsFixed(1),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
                       ],
                     ),
                     if (createdAt.isNotEmpty)
-                      Text(
-                        createdAt,
-                        style: const TextStyle(
-                            color: AppColors.muted, fontSize: 12),
-                      ),
+                      Text(createdAt,
+                          style: const TextStyle(
+                              color: AppColors.muted, fontSize: 12)),
                   ],
                 ),
               ),
@@ -392,19 +508,20 @@ class _ReviewTile extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Rating breakdown (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _RatingBreakdown extends StatelessWidget {
   final List<dynamic> reviews;
   const _RatingBreakdown({required this.reviews});
 
   @override
   Widget build(BuildContext context) {
-    // Calculate rating counts from reviews
-    final counts = [0, 0, 0, 0, 0]; // for ratings 1..5
+    final counts = [0, 0, 0, 0, 0];
     for (final r in reviews) {
       final rating = (r['rating'] ?? 0) as int;
-      if (rating >= 1 && rating <= 5) {
-        counts[rating - 1]++;
-      }
+      if (rating >= 1 && rating <= 5) counts[rating - 1]++;
     }
     final total = reviews.length;
     final avg = total > 0
@@ -444,9 +561,8 @@ class _RatingBreakdown extends StatelessWidget {
           width: 140,
           child: Column(
               children: List.generate(5, (i) {
-            final idx = i;
-            final label = (idx + 1).toString();
-            final value = total > 0 ? counts[idx] / total : 0.0;
+            final label = (i + 1).toString();
+            final value = total > 0 ? counts[i] / total : 0.0;
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(children: [

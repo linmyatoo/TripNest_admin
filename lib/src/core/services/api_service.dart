@@ -121,7 +121,6 @@ class ApiService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        // Clear local auth storage
         await AuthStorage.clearAuth();
         return {
           'success': true,
@@ -134,7 +133,6 @@ class ApiService {
         };
       }
     } catch (e) {
-      // Even if API call fails, clear local storage
       await AuthStorage.clearAuth();
       return {
         'success': true,
@@ -434,7 +432,6 @@ class ApiService {
         },
       );
 
-      // Debug logging
       print('Dashboard events status: ${response.statusCode}');
       print('Dashboard events body: ${response.body}');
 
@@ -526,7 +523,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        // Handle both array response and object with events key
         final events = data is List ? data : (data['events'] ?? data);
         return {
           'success': true,
@@ -575,7 +571,6 @@ class ApiService {
 
       request.headers['Authorization'] = token;
 
-      // Add text fields
       request.fields['title'] = title;
       request.fields['date'] = date;
       request.fields['location'] = location;
@@ -589,7 +584,6 @@ class ApiService {
         request.fields['mood'] = mood;
       }
 
-      // Add image files
       if (images != null && images.isNotEmpty) {
         for (final file in images) {
           final multipartFile = await http.MultipartFile.fromPath(
@@ -603,7 +597,6 @@ class ApiService {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      // Debug: print response for troubleshooting
       print('Create event status: ${response.statusCode}');
       print('Create event body: ${response.body}');
 
@@ -738,6 +731,92 @@ class ApiService {
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch reviews',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get sentiment summary for an event
+  // GET /api/sentiment/organizer/events/:eventId/summary
+  Future<Map<String, dynamic>> getEventSentimentSummary(String eventId) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/sentiment/organizer/events/$eventId/summary'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'data': data,
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch sentiment summary',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Get sentiment results for each review of an event
+  // GET /api/sentiment/organizer/events/:eventId/reviews
+  Future<Map<String, dynamic>> getEventSentimentReviews(String eventId) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/sentiment/organizer/events/$eventId/reviews'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          // Exposes the sentiments array: [ { reviewId, label, score,
+          // class, negativeSummary }, ... ]
+          'sentiments': data['sentiments'] ?? [],
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch sentiment reviews',
         };
       }
     } catch (e) {
