@@ -1,12 +1,34 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'auth_storage.dart';
 
 class ApiService {
   static const String baseUrl = 'https://naylinhtet.me/api';
+
+  /// Log a request outcome without ever emitting the response body, which
+  /// carries revenue figures, tokens, and other data that must not reach
+  /// device logs. Debug builds only.
+  static void _logStatus(String label, http.Response response) {
+    if (kDebugMode) {
+      debugPrint('$label: ${response.statusCode}');
+    }
+  }
+
+  /// Decode a JSON object body, tolerating non-JSON error pages. nginx can
+  /// answer with HTML (502) or an empty body (413), which would otherwise
+  /// make `jsonDecode` throw and surface as a bogus "Network error".
+  static Map<String, dynamic> _decodeOrEmpty(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    } catch (_) {
+      return {};
+    }
+  }
 
   // Register a new user
   Future<Map<String, dynamic>> register({
@@ -98,18 +120,23 @@ class ApiService {
     }
   }
 
-  // Logout user
+  // Logout user.
+  //
+  // Local credentials are destroyed unconditionally. Revoking the session
+  // server-side is best effort: if that call returns 401, 502, or anything
+  // else, the user must still end up logged out on this device.
   Future<Map<String, dynamic>> logout() async {
+    final token = AuthStorage.getAuthHeader();
+
+    if (token == null) {
+      await AuthStorage.clearAuth();
+      return {
+        'success': true,
+        'message': 'Logged out locally',
+      };
+    }
+
     try {
-      final token = AuthStorage.getAuthHeader();
-
-      if (token == null) {
-        return {
-          'success': false,
-          'message': 'No authentication token found',
-        };
-      }
-
       final response = await http.post(
         Uri.parse('$baseUrl/auth/logout'),
         headers: {
@@ -118,26 +145,29 @@ class ApiService {
         },
       );
 
-      final data = jsonDecode(response.body);
+      _logStatus('Logout', response);
+
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
-        await AuthStorage.clearAuth();
         return {
           'success': true,
           'data': data,
         };
-      } else {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Logout failed',
-        };
       }
+      return {
+        'success': false,
+        'message': data['message'] ??
+            'Server logout failed (${response.statusCode}); '
+                'logged out on this device',
+      };
     } catch (e) {
-      await AuthStorage.clearAuth();
       return {
         'success': true,
         'message': 'Logged out locally',
       };
+    } finally {
+      await AuthStorage.clearAuth();
     }
   }
 
@@ -385,8 +415,7 @@ class ApiService {
         },
       );
 
-      print('Dashboard revenue status: ${response.statusCode}');
-      print('Dashboard revenue body: ${response.body}');
+      _logStatus('Dashboard revenue', response);
 
       final data = jsonDecode(response.body);
 
@@ -432,8 +461,7 @@ class ApiService {
         },
       );
 
-      print('Dashboard events status: ${response.statusCode}');
-      print('Dashboard events body: ${response.body}');
+      _logStatus('Dashboard events', response);
 
       final data = jsonDecode(response.body);
 
@@ -518,8 +546,7 @@ class ApiService {
         },
       );
 
-      print('My events status: ${response.statusCode}');
-      print('My events body: ${response.body}');
+      _logStatus('My events', response);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -597,8 +624,7 @@ class ApiService {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('Create event status: ${response.statusCode}');
-      print('Create event body: ${response.body}');
+      _logStatus('Create event', response);
 
       if (response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -668,8 +694,7 @@ class ApiService {
         body: jsonEncode(body),
       );
 
-      print('Update event status: ${response.statusCode}');
-      print('Update event body: ${response.body}');
+      _logStatus('Update event', response);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

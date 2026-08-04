@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
@@ -70,7 +71,7 @@ class AirQualityService {
       }
       return null;
     } catch (e) {
-      print('Error fetching air quality: $e');
+      debugPrint('Error fetching air quality: $e');
       return null;
     }
   }

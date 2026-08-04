@@ -375,32 +375,35 @@ class _CreateEventPageState extends State<CreateEventPage> {
                     const Text('Photos',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    const Text('Max 300KB each (auto-compressed)',
-                        style: TextStyle(color: Color(0xFF6B7280))),
+                    Text(
+                      _isEditMode
+                          // PATCH /events/:id carries no image payload, so the
+                          // picker is hidden here rather than silently
+                          // discarding whatever the organizer selects.
+                          ? 'Photos cannot be changed while editing'
+                          : 'Max 300KB each (auto-compressed)',
+                      style: const TextStyle(color: Color(0xFF6B7280)),
+                    ),
                     const SizedBox(height: 8),
                     // Show existing images if editing
                     if (_existingImageUrls.isNotEmpty) ...[
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
-                        children:
-                            _existingImageUrls.asMap().entries.map((entry) {
-                          return _ExistingImageTile(
-                            imageUrl: entry.value,
-                            onDelete: () => setState(
-                                () => _existingImageUrls.removeAt(entry.key)),
-                          );
-                        }).toList(),
+                        children: _existingImageUrls
+                            .map((url) => _ExistingImageTile(imageUrl: url))
+                            .toList(),
                       ),
                       const SizedBox(height: 12),
                     ],
-                    _PhotoGrid(
-                      photos: _photos,
-                      sizeLabelFor: _prettySize,
-                      onRemove: _removePhoto,
-                      onAddGallery: _addFromGallery,
-                      onAddCamera: _addFromCamera,
-                    ),
+                    if (!_isEditMode)
+                      _PhotoGrid(
+                        photos: _photos,
+                        sizeLabelFor: _prettySize,
+                        onRemove: _removePhoto,
+                        onAddGallery: _addFromGallery,
+                        onAddCamera: _addFromCamera,
+                      ),
 
                     const SizedBox(height: 16),
                     const Text('Available seat',
@@ -610,8 +613,10 @@ class _ThumbTile extends StatelessWidget {
 
 class _ExistingImageTile extends StatelessWidget {
   final String imageUrl;
-  final VoidCallback onDelete;
-  const _ExistingImageTile({required this.imageUrl, required this.onDelete});
+
+  /// When null the tile is read-only and no delete badge is drawn.
+  final VoidCallback? onDelete;
+  const _ExistingImageTile({required this.imageUrl, this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -632,22 +637,23 @@ class _ExistingImageTile extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: InkWell(
-            onTap: onDelete,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(12),
+        if (onDelete != null)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: InkWell(
+              onTap: onDelete,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.close, size: 16, color: Colors.white),
               ),
-              child: const Icon(Icons.close, size: 16, color: Colors.white),
             ),
           ),
-        ),
       ],
     );
   }

@@ -82,14 +82,13 @@ class ChatService {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      debugPrint('Chat rooms response: $data');
       final rooms = (data['rooms'] as List? ?? [])
           .map((e) => ChatRoom.fromJson(e))
           .toList();
       debugPrint('Parsed ${rooms.length} chat rooms');
       return rooms;
     } else {
-      debugPrint('Chat rooms error: ${response.statusCode} - ${response.body}');
+      debugPrint('Chat rooms error: ${response.statusCode}');
       final data = jsonDecode(response.body);
       throw Exception(data['error'] ?? 'Failed to fetch chat rooms');
     }

@@ -48,15 +48,6 @@ class _LoginPageState extends State<LoginPage> {
         final userEmail = result['email'];
 
         if (token != null) {
-          // Print token to console
-          print('====================================');
-          print('LOGIN SUCCESS');
-          print('====================================');
-          print('Token: $token');
-          print('UserId: $userId');
-          print('Email: $userEmail');
-          print('====================================');
-
           await AuthStorage.saveAuth(
             token: token,
             user: {

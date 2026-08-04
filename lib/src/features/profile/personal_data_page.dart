@@ -45,21 +45,10 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
     setState(() => _isLoading = true);
 
     try {
-      print('📡 Fetching organizer profile...');
       final result = await _apiService.getOrganizerProfile();
 
       if (result['success']) {
         final data = result['data'];
-
-        print('====================================');
-        print('ORGANIZER PROFILE DATA');
-        print('====================================');
-        print('ID: ${data['id']}');
-        print('User ID: ${data['userId']}');
-        print('Organization Name: ${data['organizationName']}');
-        print('Contact Number: ${data['contactNumber']}');
-        print('Address: ${data['address']}');
-        print('====================================');
 
         setState(() {
           _organizerId = data['id'];
@@ -79,7 +68,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('Error loading profile: $e');
+      debugPrint('Error loading profile: $e');
       _snack('Error loading profile');
       setState(() => _isLoading = false);
     }
