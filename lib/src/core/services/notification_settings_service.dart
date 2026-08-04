@@ -1,6 +1,10 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-class NotificationService {
+/// User-facing notification preferences.
+///
+/// Distinct from `NotificationService`, which delivers notifications. The two
+/// used to share a name, which meant no file could import both.
+class NotificationSettingsService {
   static const String _keyNotifications = 'notif_notifications';
   static const String _keySound = 'notif_sound';
   static const String _keyVibrate = 'notif_vibrate';

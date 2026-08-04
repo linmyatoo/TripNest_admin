@@ -88,12 +88,14 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
     } catch (e) {
-      // Close loading dialog
+      // Even on error, make sure local credentials are gone before touching
+      // the navigator.
+      await AuthStorage.clearAuth();
+
       if (context.mounted) {
+        // Close loading dialog
         Navigator.pop(context);
 
-        // Even on error, clear local storage and logout
-        await AuthStorage.clearAuth();
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/login',

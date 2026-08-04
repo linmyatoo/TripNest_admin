@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'auth_storage.dart';
+import 'session.dart';
 
 class ApiService {
   static const String baseUrl = 'https://naylinhtet.me/api';
@@ -231,7 +232,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/user/profile'),
         headers: {
           'Content-Type': 'application/json',
@@ -272,7 +273,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/organizers/me'),
         headers: {
           'Content-Type': 'application/json',
@@ -328,7 +329,7 @@ class ApiService {
         body['address'] = address;
       }
 
-      final response = await http.post(
+      final response = await apiClient.post(
         Uri.parse('$baseUrl/organizers'),
         headers: {
           'Content-Type': 'application/json',
@@ -407,7 +408,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/dashboard/revenue'),
         headers: {
           'Content-Type': 'application/json',
@@ -453,7 +454,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/dashboard/events'),
         headers: {
           'Content-Type': 'application/json',
@@ -497,7 +498,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/events/$eventId'),
         headers: {
           'Content-Type': 'application/json',
@@ -538,7 +539,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/events'),
         headers: {
           'Content-Type': 'application/json',
@@ -621,7 +622,7 @@ class ApiService {
         }
       }
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await apiClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
 
       _logStatus('Create event', response);
@@ -685,7 +686,7 @@ class ApiService {
       if (price != null) body['price'] = price;
       if (mood != null) body['mood'] = mood;
 
-      final response = await http.patch(
+      final response = await apiClient.patch(
         Uri.parse('$baseUrl/events/$eventId'),
         headers: {
           'Content-Type': 'application/json',
@@ -737,7 +738,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/reviews/event/$eventId'),
         headers: {
           'Content-Type': 'application/json',
@@ -779,7 +780,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/sentiment/organizer/events/$eventId/summary'),
         headers: {
           'Content-Type': 'application/json',
@@ -821,7 +822,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/sentiment/organizer/events/$eventId/reviews'),
         headers: {
           'Content-Type': 'application/json',
@@ -863,7 +864,7 @@ class ApiService {
         };
       }
 
-      final response = await http.get(
+      final response = await apiClient.get(
         Uri.parse('$baseUrl/chat/rooms'),
         headers: {
           'Content-Type': 'application/json',

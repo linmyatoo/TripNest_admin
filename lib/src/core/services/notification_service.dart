@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'notification_settings_service.dart';
+
 /// Global navigator key for notification navigation
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -92,29 +94,41 @@ class NotificationService {
     _initialized = true;
   }
 
-  /// Show a native device notification
+  /// Show a native device notification.
+  ///
+  /// Honours the user's notification preferences: nothing is delivered while
+  /// the master switch is off, and the sound/vibrate toggles are applied to
+  /// the platform details.
   static Future<void> showNativeNotification({
     required String title,
     required String body,
   }) async {
+    final settings = await NotificationSettingsService.getAllSettings();
+    if (settings['notifications'] == false) return;
+
     await initialize();
 
-    const androidDetails = AndroidNotificationDetails(
+    final playSound = settings['sound'] ?? true;
+    final vibrate = settings['vibrate'] ?? true;
+
+    final androidDetails = AndroidNotificationDetails(
       'tripnest_channel',
       'TripNest Notifications',
       channelDescription: 'Notifications for TripNest events',
       importance: Importance.high,
       priority: Priority.high,
       showWhen: true,
+      playSound: playSound,
+      enableVibration: vibrate,
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: playSound,
     );
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -123,12 +137,17 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.show(id, title, body, details);
   }
 
+  /// Record a notification in the in-app feed and, unless suppressed, deliver
+  /// it to the device.
+  ///
+  /// The feed entry is written regardless of the user's preferences — muting
+  /// notifications silences delivery, it does not erase the history.
   static Future<void> addNotification({
     required String title,
     required String body,
     bool showNative = true,
   }) async {
-    // Show native device notification
+    // Show native device notification (respects the user's settings)
     if (showNative) {
       await showNativeNotification(title: title, body: body);
     }

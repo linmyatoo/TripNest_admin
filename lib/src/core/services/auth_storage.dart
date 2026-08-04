@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'security_service.dart';
+
 /// Persistent auth storage using SharedPreferences
 class AuthStorage {
   static const String _tokenKey = 'auth_token';
@@ -51,12 +53,17 @@ class AuthStorage {
     return _token != null && _token!.isNotEmpty;
   }
 
-  /// Clear authentication data (logout)
+  /// Clear authentication data (logout).
+  ///
+  /// Also drops the per-user security preferences, so that "remember password"
+  /// or Face ID enabled by one account does not carry into the next one on a
+  /// shared device.
   static Future<void> clearAuth() async {
     _token = null;
     _user = null;
     await _prefs?.remove(_tokenKey);
     await _prefs?.remove(_userKey);
+    await SecurityService.clearAllSettings();
     debugPrint('Auth cleared: Token and user data removed');
   }
 

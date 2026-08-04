@@ -39,7 +39,8 @@ A Flutter mobile app for event **organizers**. TripNest Admin is the operator-si
 ### Account
 - Onboarding carousel, sign up, log in, forgot password, change password
 - Organizer profile (organization name, contact number, address)
-- Notification preferences and security settings (remember password, Face ID, biometric toggles) — note that both groups currently only persist the toggle state; see Configuration Notes
+- Notification preferences (master switch, sound, vibrate) and security settings (remember password, Face ID, biometric toggles — persisted only; see Configuration Notes)
+- Security preferences are cleared on logout, so they do not leak between accounts on a shared device
 - Privacy policy and help center pages
 
 ### Notifications
@@ -53,7 +54,7 @@ A Flutter mobile app for event **organizers**. TripNest Admin is the operator-si
 | Framework | Flutter (Dart SDK `>=2.18.0 <4.0.0`) |
 | UI | Material 3, custom light theme in `lib/main.dart` |
 | Networking | `http` — REST against `https://naylinhtet.me/api` |
-| Auth | JWT bearer token, persisted with `shared_preferences` |
+| Auth | JWT bearer token, persisted with `shared_preferences`; a shared `http.Client` redirects to login on any 401 |
 | Local storage | `shared_preferences` |
 | Notifications | `flutter_local_notifications` |
 | Media | `image_picker`, `image`, `path_provider`, `path` |
@@ -72,6 +73,7 @@ lib/
     │   ├── services/
     │   │   ├── api_service.dart      # All TripNest REST calls
     │   │   ├── auth_storage.dart     # Token + user persistence, Authorization header
+    │   │   ├── session.dart           # Shared HTTP client; expires session on 401
     │   │   ├── air_quality_service.dart
     │   │   ├── chat_service.dart
     │   │   ├── notification_service.dart          # Local + native notifications
@@ -181,7 +183,15 @@ flutter config --enable-swift-package-manager
 - **WAQI API token** is currently hardcoded in `lib/src/core/services/air_quality_service.dart`. Move it to `--dart-define` or a git-ignored config before making this repository public.
 - **Commission rate** is a fixed 15% computed on the client in `lib/src/features/sales/sales_page.dart`.
 - **Biometric toggles** in `SecurityService` only persist preferences; actual biometric authentication (`local_auth`) is not wired up yet.
-- **Notification toggles** likewise only persist. `NotificationSettingsService.areNotificationsEnabled()` is not yet consulted by `NotificationService.addNotification`, so alerts fire regardless of the switch.
+- **Notification toggles** are honoured for delivery: the master switch suppresses native notifications entirely, and the sound/vibrate toggles feed the platform notification details. The remaining four toggles (offers, payments, cashback, app updates) have no corresponding notification type in the app yet. Feed entries are always recorded — muting silences delivery, not history.
+
+## Session Handling
+
+Authenticated requests go through `apiClient` in `lib/src/core/services/session.dart`, a `BaseClient` wrapper. Any 401 clears stored credentials and pushes `/login`, clearing the back stack, so an expired token cannot leave the user on a dashboard where every panel fails.
+
+Unauthenticated endpoints (`register`, `login`, `forgot-password`) and the two where a 401 means "wrong password" rather than "expired session" (`logout`, `change-password`) deliberately bypass this client.
+
+The login response's `expiresIn` is not yet persisted — expiry is detected reactively via 401 rather than checked ahead of time.
 
 ## Startup Sequence
 

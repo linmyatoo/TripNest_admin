@@ -611,50 +611,30 @@ class _ThumbTile extends StatelessWidget {
   }
 }
 
+/// Read-only thumbnail for an image already stored on the server.
+///
+/// There is no delete affordance: `PATCH /events/:id` accepts no image
+/// payload, so removal cannot be persisted.
 class _ExistingImageTile extends StatelessWidget {
   final String imageUrl;
-
-  /// When null the tile is read-only and no delete badge is drawn.
-  final VoidCallback? onDelete;
-  const _ExistingImageTile({required this.imageUrl, this.onDelete});
+  const _ExistingImageTile({required this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.network(
-            imageUrl,
-            width: 96,
-            height: 96,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              width: 96,
-              height: 96,
-              color: Colors.grey[200],
-              child: const Icon(Icons.image, color: Colors.grey),
-            ),
-          ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        imageUrl,
+        width: 96,
+        height: 96,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: 96,
+          height: 96,
+          color: Colors.grey[200],
+          child: const Icon(Icons.image, color: Colors.grey),
         ),
-        if (onDelete != null)
-          Positioned(
-            top: 4,
-            right: 4,
-            child: InkWell(
-              onTap: onDelete,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.close, size: 16, color: Colors.white),
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 }

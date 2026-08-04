@@ -15,6 +15,8 @@ class _AdminSplashPageState extends State<AdminSplashPage> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+
       // Check if user is already logged in
       if (AuthStorage.isAuthenticated()) {
         Navigator.of(context).pushReplacementNamed('/app');

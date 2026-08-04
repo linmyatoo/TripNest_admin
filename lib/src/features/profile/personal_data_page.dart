@@ -32,8 +32,6 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
   static const int _maxBytes = 1024 * 1024; // 1 MB
   bool _isLoading = true;
   bool _isSaving = false;
-  String? _organizerId;
-  String? _userId;
 
   @override
   void initState() {
@@ -51,8 +49,6 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
         final data = result['data'];
 
         setState(() {
-          _organizerId = data['id'];
-          _userId = data['userId'];
           organizationNameCtrl.text = data['organizationName'] != 'Not Set'
               ? data['organizationName'] ?? ''
               : '';

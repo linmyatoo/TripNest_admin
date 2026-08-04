@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'auth_storage.dart';
+import 'session.dart';
 
 class ChatMessage {
   final String id;
@@ -72,7 +72,7 @@ class ChatService {
       throw Exception('Not authenticated');
     }
 
-    final response = await http.get(
+    final response = await apiClient.get(
       Uri.parse('$baseUrl/chat/rooms'),
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ class ChatService {
       throw Exception('Not authenticated');
     }
 
-    final response = await http.get(
+    final response = await apiClient.get(
       Uri.parse('$baseUrl/chat/rooms/$roomId/messages'),
       headers: {
         'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ class ChatService {
       throw Exception('Not authenticated');
     }
 
-    final response = await http.post(
+    final response = await apiClient.post(
       Uri.parse('$baseUrl/chat/rooms/$roomId/messages'),
       headers: {
         'Content-Type': 'application/json',
