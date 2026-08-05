@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'security_service.dart';
-
 /// Persistent auth storage using SharedPreferences
 class AuthStorage {
   static const String _tokenKey = 'auth_token';
@@ -14,14 +12,27 @@ class AuthStorage {
   static Map<String, dynamic>? _user;
   static SharedPreferences? _prefs;
 
-  /// Initialize storage - call this at app startup
+  /// Initialize storage - call this at app startup.
+  ///
+  /// Runs before `runApp`, so it must not throw: a corrupted `auth_user`
+  /// record would otherwise mean a black screen with no recovery short of
+  /// reinstalling. A record that cannot be read is discarded instead.
   static Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _token = _prefs?.getString(_tokenKey);
+
     final userJson = _prefs?.getString(_userKey);
     if (userJson != null) {
-      _user = jsonDecode(userJson);
+      try {
+        final decoded = jsonDecode(userJson);
+        _user = decoded is Map<String, dynamic> ? decoded : null;
+      } catch (e) {
+        debugPrint('Discarding unreadable saved user record: $e');
+        _user = null;
+        await _prefs?.remove(_userKey);
+      }
     }
+
     debugPrint(
         'Auth initialized: ${isAuthenticated() ? 'User logged in' : 'No saved session'}');
   }
@@ -53,17 +64,17 @@ class AuthStorage {
     return _token != null && _token!.isNotEmpty;
   }
 
-  /// Clear authentication data (logout).
+  /// Clear authentication data.
   ///
-  /// Also drops the per-user security preferences, so that "remember password"
-  /// or Face ID enabled by one account does not carry into the next one on a
-  /// shared device.
+  /// Called both on deliberate logout and on a 401, so it does only what is
+  /// safe in either case. Resetting the user's security toggles belongs to
+  /// deliberate logout alone — see [ApiService.logout] — because those
+  /// preferences hold no credentials and should survive a transient 401.
   static Future<void> clearAuth() async {
     _token = null;
     _user = null;
     await _prefs?.remove(_tokenKey);
     await _prefs?.remove(_userKey);
-    await SecurityService.clearAllSettings();
     debugPrint('Auth cleared: Token and user data removed');
   }
 

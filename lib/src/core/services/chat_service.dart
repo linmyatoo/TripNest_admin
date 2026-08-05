@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
 import 'auth_storage.dart';
 import 'session.dart';
 
@@ -66,6 +68,24 @@ class ChatRoom {
 class ChatService {
   static const String baseUrl = 'https://naylinhtet.me/api';
 
+  /// Decode a JSON object body, tolerating non-JSON error pages.
+  ///
+  /// These endpoints are polled on a timer, so an nginx HTML 502 would
+  /// otherwise raise a `FormatException` every few seconds.
+  static Map<String, dynamic> _decodeOrEmpty(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      return decoded is Map<String, dynamic> ? decoded : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  static Exception _failure(String action, http.Response response) {
+    final message = _decodeOrEmpty(response)['error'];
+    return Exception(message ?? '$action failed (${response.statusCode})');
+  }
+
   static Future<List<ChatRoom>> getChatRooms() async {
     final token = AuthStorage.getAuthHeader();
     if (token == null) {
@@ -81,7 +101,7 @@ class ChatService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
       final rooms = (data['rooms'] as List? ?? [])
           .map((e) => ChatRoom.fromJson(e))
           .toList();
@@ -89,8 +109,7 @@ class ChatService {
       return rooms;
     } else {
       debugPrint('Chat rooms error: ${response.statusCode}');
-      final data = jsonDecode(response.body);
-      throw Exception(data['error'] ?? 'Failed to fetch chat rooms');
+      throw _failure('Fetching chat rooms', response);
     }
   }
 
@@ -109,14 +128,13 @@ class ChatService {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
       final messages = (data['messages'] as List? ?? [])
           .map((e) => ChatMessage.fromJson(e))
           .toList();
       return messages;
     } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data['error'] ?? 'Failed to fetch messages');
+      throw _failure('Fetching messages', response);
     }
   }
 
@@ -136,11 +154,10 @@ class ChatService {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
       return ChatMessage.fromJson(data['message'] ?? data);
     } else {
-      final data = jsonDecode(response.body);
-      throw Exception(data['error'] ?? 'Failed to send message');
+      throw _failure('Sending message', response);
     }
   }
 }

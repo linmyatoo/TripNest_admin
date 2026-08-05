@@ -40,7 +40,7 @@ A Flutter mobile app for event **organizers**. TripNest Admin is the operator-si
 - Onboarding carousel, sign up, log in, forgot password, change password
 - Organizer profile (organization name, contact number, address)
 - Notification preferences (master switch, sound, vibrate) and security settings (remember password, Face ID, biometric toggles — persisted only; see Configuration Notes)
-- Security preferences are cleared on logout, so they do not leak between accounts on a shared device
+- Security preferences are reset on deliberate logout only — a transient 401 clears the session without touching the user's toggles
 - Privacy policy and help center pages
 
 ### Notifications
@@ -167,6 +167,8 @@ flutter analyze
 
 `analysis_options.yaml` pulls in `package:flutter_lints`, so `flutter analyze` is meaningful — keep it clean.
 
+The suite covers the session/401 layer (token-scoped expiry, concurrent 401s, the redirect), `ApiService.logout` across success, 401, non-JSON 502, network failure, and no-token, plus the AQI band boundaries and notification serialization. HTTP is mocked throughout via `package:http/testing.dart`, so no backend is required.
+
 ### iOS signing
 
 The bundle identifier is still the Flutter template default, `com.example.tripnest1`. Before building for a physical device, change it under **Runner target → Signing & Capabilities → Bundle Identifier** in `ios/Runner.xcworkspace` and select your development team. A device must be registered with your Apple Developer team for automatic provisioning to succeed.
@@ -187,11 +189,17 @@ flutter config --enable-swift-package-manager
 
 ## Session Handling
 
-Authenticated requests go through `apiClient` in `lib/src/core/services/session.dart`, a `BaseClient` wrapper. Any 401 clears stored credentials and pushes `/login`, clearing the back stack, so an expired token cannot leave the user on a dashboard where every panel fails.
+Authenticated requests go through `apiClient` in `lib/src/core/services/session.dart`, a `BaseClient` wrapper. A 401 clears stored credentials and pushes `/login` with the back stack cleared, so an expired token cannot leave the user on a dashboard where every panel fails.
 
-Unauthenticated endpoints (`register`, `login`, `forgot-password`) and the two where a 401 means "wrong password" rather than "expired session" (`logout`, `change-password`) deliberately bypass this client.
+Three details worth knowing:
 
-The login response's `expiresIn` is not yet persisted — expiry is detected reactively via 401 rather than checked ahead of time.
+- **Expiry is scoped to the token that failed.** The `Authorization` header is captured before the round trip and compared against what is stored when the 401 comes back. Dart's `http` has no cancellation, so a request still in flight from a previous session can resolve *after* the user logs back in; without this check it would evict the new, valid token.
+- **A missing navigator is handled.** If the 401 lands before `MaterialApp` is attached, credentials are still cleared and the next launch starts clean.
+- **The redirect is not awaited.** `pushNamedAndRemoveUntil` only completes when the login route is popped, so awaiting it would pin the concurrency guard for as long as the login screen is visible.
+
+Unauthenticated endpoints (`register`, `login`, `forgot-password`) and the two where a 401 means "wrong password" rather than "expired session" (`logout`, `change-password`) go through `ApiService`'s separate `credentialClient`, which has no 401 interception. Both clients are injectable for tests.
+
+The login response's `expiresIn` is not persisted — expiry is detected reactively via 401 rather than checked ahead of time, because the field's format is not documented.
 
 ## Startup Sequence
 

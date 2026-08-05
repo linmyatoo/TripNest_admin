@@ -5,9 +5,19 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'auth_storage.dart';
+import 'security_service.dart';
 import 'session.dart';
 
 class ApiService {
+  /// [credentialClient] serves the endpoints that must NOT go through
+  /// [apiClient]: there, a 401 means "wrong password", not "expired session",
+  /// and routing them through the session-aware client would evict a valid
+  /// login. Injectable so tests can supply a `MockClient`.
+  ApiService({http.Client? credentialClient})
+      : _credentialClient = credentialClient ?? http.Client();
+
+  final http.Client _credentialClient;
+
   static const String baseUrl = 'https://naylinhtet.me/api';
 
   /// Log a request outcome without ever emitting the response body, which
@@ -46,7 +56,7 @@ class ApiService {
         body['name'] = name;
       }
 
-      final response = await http.post(
+      final response = await _credentialClient.post(
         Uri.parse('$baseUrl/auth/register'),
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +64,7 @@ class ApiService {
         body: jsonEncode(body),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 201) {
         return {
@@ -85,7 +95,7 @@ class ApiService {
     required String password,
   }) async {
     try {
-      final response = await http.post(
+      final response = await _credentialClient.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +106,7 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -126,11 +136,16 @@ class ApiService {
   // Local credentials are destroyed unconditionally. Revoking the session
   // server-side is best effort: if that call returns 401, 502, or anything
   // else, the user must still end up logged out on this device.
+  //
+  // This is the deliberate logout path, so it also resets the security
+  // toggles. `AuthStorage.clearAuth` deliberately does not, because it also
+  // runs on a transient 401 where wiping the user's preferences would be
+  // surprising.
   Future<Map<String, dynamic>> logout() async {
     final token = AuthStorage.getAuthHeader();
 
     if (token == null) {
-      await AuthStorage.clearAuth();
+      await _clearLocalSession();
       return {
         'success': true,
         'message': 'Logged out locally',
@@ -138,7 +153,7 @@ class ApiService {
     }
 
     try {
-      final response = await http.post(
+      final response = await _credentialClient.post(
         Uri.parse('$baseUrl/auth/logout'),
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +183,20 @@ class ApiService {
         'message': 'Logged out locally',
       };
     } finally {
+      await _clearLocalSession();
+    }
+  }
+
+  /// Tear down everything this device holds for the signed-in organizer.
+  ///
+  /// Best effort: a failure to reach SharedPreferences must not stop the
+  /// caller from navigating away from the authenticated UI.
+  static Future<void> _clearLocalSession() async {
+    try {
       await AuthStorage.clearAuth();
+      await SecurityService.clearAllSettings();
+    } catch (e) {
+      debugPrint('Failed to fully clear local session: $e');
     }
   }
 
@@ -187,7 +215,7 @@ class ApiService {
         };
       }
 
-      final response = await http.post(
+      final response = await _credentialClient.post(
         Uri.parse('$baseUrl/auth/change-password'),
         headers: {
           'Content-Type': 'application/json',
@@ -199,7 +227,7 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -240,7 +268,7 @@ class ApiService {
         },
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -281,7 +309,7 @@ class ApiService {
         },
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -338,7 +366,7 @@ class ApiService {
         body: jsonEncode(body),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 201) {
         return {
@@ -374,7 +402,7 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -418,7 +446,7 @@ class ApiService {
 
       _logStatus('Dashboard revenue', response);
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -464,7 +492,7 @@ class ApiService {
 
       _logStatus('Dashboard events', response);
 
-      final data = jsonDecode(response.body);
+      final data = _decodeOrEmpty(response);
 
       if (response.statusCode == 200) {
         return {
@@ -507,13 +535,13 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           'event': data,
         };
       } else {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch event',
@@ -550,14 +578,14 @@ class ApiService {
       _logStatus('My events', response);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         final events = data is List ? data : (data['events'] ?? data);
         return {
           'success': true,
           'events': events is List ? events : [],
         };
       } else {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch events',
@@ -628,25 +656,18 @@ class ApiService {
       _logStatus('Create event', response);
 
       if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           'event': data,
           'message': 'Event created successfully',
         };
       } else {
-        try {
-          final data = jsonDecode(response.body);
-          return {
-            'success': false,
-            'message': data['error'] ?? 'Failed to create event',
-          };
-        } catch (_) {
-          return {
-            'success': false,
-            'message': 'Server error (${response.statusCode})',
-          };
-        }
+        return {
+          'success': false,
+          'message': _decodeOrEmpty(response)['error'] ??
+              'Failed to create event (${response.statusCode})',
+        };
       }
     } catch (e) {
       return {
@@ -698,25 +719,18 @@ class ApiService {
       _logStatus('Update event', response);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           'event': data,
           'message': 'Event updated successfully',
         };
       } else {
-        try {
-          final data = jsonDecode(response.body);
-          return {
-            'success': false,
-            'message': data['error'] ?? 'Failed to update event',
-          };
-        } catch (_) {
-          return {
-            'success': false,
-            'message': 'Server error (${response.statusCode})',
-          };
-        }
+        return {
+          'success': false,
+          'message': _decodeOrEmpty(response)['error'] ??
+              'Failed to update event (${response.statusCode})',
+        };
       }
     } catch (e) {
       return {
@@ -747,13 +761,13 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           'reviews': data is List ? data : [],
         };
       } else {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch reviews',
@@ -789,13 +803,13 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           'data': data,
         };
       } else {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch sentiment summary',
@@ -831,7 +845,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           // Exposes the sentiments array: [ { reviewId, label, score,
@@ -839,7 +853,7 @@ class ApiService {
           'sentiments': data['sentiments'] ?? [],
         };
       } else {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch sentiment reviews',
@@ -873,13 +887,13 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': true,
           'rooms': data['rooms'] ?? [],
         };
       } else {
-        final data = jsonDecode(response.body);
+        final data = _decodeOrEmpty(response);
         return {
           'success': false,
           'message': data['error'] ?? 'Failed to fetch chat rooms',
