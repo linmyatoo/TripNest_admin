@@ -15,17 +15,17 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   final slides = const [
     _Slide(
-      bg: 'assets/images/onboarding_1.jpg',
+      bg: 'assets/images/music-concert.jpg',
       title: 'Collect Memories\nNot Things',
       subtitle: 'One app. Endless experiences.',
     ),
     _Slide(
-      bg: 'assets/images/onboarding_2.jpg',
+      bg: 'assets/images/opera.jpeg',
       title: 'Adventure is only a\nbooking away',
       subtitle: 'Life is made of moments\nBook yours today',
     ),
     _Slide(
-      bg: 'assets/images/onboarding_3.jpg',
+      bg: 'assets/images/concert.jpg',
       title: 'Discover the world,\nOne event at a time',
       subtitle: 'From clicks to memories in minutes.',
     ),

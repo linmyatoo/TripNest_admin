@@ -61,7 +61,7 @@ class _SalesPageState extends State<SalesPage> {
     }
   }
 
-  String money(num n) => n is int ? '${n}.00' : n.toStringAsFixed(2);
+  String money(num n) => n is int ? '$n.00' : n.toStringAsFixed(2);
 
   @override
   Widget build(BuildContext context) {
@@ -225,9 +225,9 @@ class _SalesTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text('Total ticket sale',
                     style: TextStyle(fontWeight: FontWeight.w700)),
                 Text('See All',
@@ -270,8 +270,7 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final h =
-        const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600);
+    const h = TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600);
     return Row(children: [
       Expanded(flex: 6, child: Text('Name', style: h)),
       Expanded(flex: 2, child: Text('Ticket', style: h)),

@@ -77,9 +77,9 @@ class HomePageState extends State<HomePage> {
               airQuality: _airQuality,
             ),
             const SizedBox(height: 12),
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text('Your events',
                     style:
                         TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
@@ -191,10 +191,10 @@ class _Header extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
-              color: _getAqiColor(airQuality!.aqi).withOpacity(0.15),
+              color: _getAqiColor(airQuality!.aqi).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: _getAqiColor(airQuality!.aqi).withOpacity(0.3)),
+                  color: _getAqiColor(airQuality!.aqi).withValues(alpha: 0.3)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -354,7 +354,7 @@ class _EventCardState extends State<_EventCard> {
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.4),
+                            color: Colors.black.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Material(
@@ -413,7 +413,7 @@ class _EventCardState extends State<_EventCard> {
                                 shape: BoxShape.circle,
                                 color: _currentPage == index
                                     ? Colors.white
-                                    : Colors.white.withOpacity(0.5),
+                                    : Colors.white.withValues(alpha: 0.5),
                               ),
                             ),
                           ),

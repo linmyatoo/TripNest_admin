@@ -58,7 +58,7 @@ class _AppShellState extends State<AppShell> {
           return NavigationBar(
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.transparent,
-            indicatorColor: AppColors.primary.withOpacity(.12),
+            indicatorColor: AppColors.primary.withValues(alpha: .12),
             selectedIndex: idx,
             onDestinationSelected: _onTabSelected,
             destinations: [

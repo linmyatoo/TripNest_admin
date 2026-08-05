@@ -424,7 +424,7 @@ class _LatestReviewsSection extends StatelessWidget {
             ),
           )
         else
-          ...displayReviews.map((r) => _ReviewTile(review: r)).toList(),
+          ...displayReviews.map((r) => _ReviewTile(review: r)),
       ],
     );
   }
@@ -465,7 +465,7 @@ class _ReviewTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 22,
-                backgroundColor: AppColors.primary.withOpacity(0.1),
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                 child: const Icon(Icons.person, color: AppColors.primary),
               ),
               const SizedBox(width: 10),

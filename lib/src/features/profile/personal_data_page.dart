@@ -44,7 +44,6 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
 
     try {
       final result = await _apiService.getOrganizerProfile();
-      if (!mounted) return;
 
       if (result['success']) {
         final data = result['data'];
@@ -66,7 +65,6 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
       }
     } catch (e) {
       debugPrint('Error loading profile: $e');
-      if (!mounted) return;
       _snack('Error loading profile');
       setState(() => _isLoading = false);
     }
@@ -85,17 +83,17 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
         address: addressCtrl.text.trim(),
       );
 
-      if (!mounted) return;
       setState(() => _isSaving = false);
 
       if (result['success']) {
         _snack('Profile saved successfully');
-        Navigator.pop(context);
+        if (mounted) {
+          Navigator.pop(context);
+        }
       } else {
         _snack(result['message'] ?? 'Failed to save profile');
       }
     } catch (e) {
-      if (!mounted) return;
       setState(() => _isSaving = false);
       _snack('Error saving profile');
     }
@@ -117,7 +115,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
     int height = decoded.height;
     img.Image current = decoded;
 
-    Future<File> _write(Uint8List data) async {
+    Future<File> write(Uint8List data) async {
       final dir = await getTemporaryDirectory();
       final path = p.join(
           dir.path, 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -130,7 +128,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
       final encoded =
           Uint8List.fromList(img.encodeJpg(current, quality: quality));
       if (encoded.lengthInBytes <= _maxBytes) {
-        return _write(encoded);
+        return write(encoded);
       }
 
       if (quality > 50) {
@@ -193,8 +191,9 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
                     );
                     if (x != null) {
                       final compressed = await _ensureUnder1MB(File(x.path));
-                      if (compressed != null)
+                      if (compressed != null) {
                         setState(() => _avatar = compressed);
+                      }
                     }
                     if (mounted) Navigator.pop(context);
                   },
@@ -210,8 +209,9 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
                     );
                     if (x != null) {
                       final compressed = await _ensureUnder1MB(File(x.path));
-                      if (compressed != null)
+                      if (compressed != null) {
                         setState(() => _avatar = compressed);
+                      }
                     }
                     if (mounted) Navigator.pop(context);
                   },

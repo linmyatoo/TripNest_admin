@@ -188,7 +188,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
       );
     }
 
-    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result['success']) {
@@ -288,7 +287,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
           interpolation: img.Interpolation.average);
     }
 
-    Future<File> _writeOut(Uint8List data) async {
+    Future<File> writeOut(Uint8List data) async {
       final dir = await getTemporaryDirectory();
       final path =
           p.join(dir.path, 'tn_${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -301,7 +300,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       final encoded =
           Uint8List.fromList(img.encodeJpg(current, quality: quality));
       if (encoded.lengthInBytes <= _maxBytes) {
-        return _writeOut(encoded);
+        return writeOut(encoded);
       }
 
       if (quality > 30) {
@@ -328,7 +327,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
   String _prettySize(File f) {
     final b = f.lengthSync();
-    if (b < 1024) return '${b} B';
+    if (b < 1024) return '$b B';
     if (b < 1024 * 1024) return '${(b / 1024).toStringAsFixed(0)} KB';
     return '${(b / (1024 * 1024)).toStringAsFixed(2)} MB';
   }

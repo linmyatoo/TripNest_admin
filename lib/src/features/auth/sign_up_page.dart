@@ -198,8 +198,8 @@ class _Blue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text,
-        style:
-            TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w600));
+        style: const TextStyle(
+            color: Color(0xFF2563EB), fontWeight: FontWeight.w600));
   }
 }
 
@@ -218,7 +218,7 @@ class _SignUpSuccessDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 12),
             ),

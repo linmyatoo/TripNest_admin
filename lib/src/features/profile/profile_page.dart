@@ -39,7 +39,6 @@ class _ProfilePageState extends State<ProfilePage> {
     // Fetch organizer profile
     try {
       final result = await _apiService.getOrganizerProfile();
-      if (!mounted) return;
       if (result['success']) {
         final data = result['data'];
         setState(() {
@@ -55,7 +54,6 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     } catch (e) {
-      if (!mounted) return;
       setState(() {
         _organizationName = 'Not Set';
         _isLoading = false;
@@ -90,19 +88,12 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
     } catch (e) {
-      // Belt and braces: ApiService.logout already clears the session in its
-      // own `finally`. Guard this anyway so a SharedPreferences failure can
-      // never leave the user stuck behind the non-dismissible dialog above.
-      try {
-        await AuthStorage.clearAuth();
-      } catch (_) {
-        // Best effort; navigating away matters more.
-      }
-
+      // Close loading dialog
       if (context.mounted) {
-        // Close loading dialog
         Navigator.pop(context);
 
+        // Even on error, clear local storage and logout
+        await AuthStorage.clearAuth();
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/login',
@@ -186,7 +177,7 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 10),
             SettingsTile(
               icon: Icons.logout_rounded,
-              iconColor: Color(0xFFEF4444),
+              iconColor: const Color(0xFFEF4444),
               label: 'Logout',
               onTap: () async {
                 final ok = await showDialog<bool>(
@@ -220,7 +211,7 @@ class _LogoutConfirmDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 24,
               offset: const Offset(0, 12),
             ),

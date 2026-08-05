@@ -162,7 +162,7 @@ class _SimpleNotificationCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         elevation: 0,
-        shadowColor: Colors.black.withOpacity(0.08),
+        shadowColor: Colors.black.withValues(alpha: 0.08),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () {},
