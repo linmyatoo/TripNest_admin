@@ -53,7 +53,7 @@ A Flutter mobile app for event **organizers**. TripNest Admin is the operator-si
 | --- | --- |
 | Framework | Flutter (Dart SDK `>=2.18.0 <4.0.0`) |
 | UI | Material 3, custom light theme in `lib/main.dart` |
-| Networking | `http` — REST against `https://naylinhtet.me/api` |
+| Networking | `http` — REST against `https://tripnestbackend-v2.onrender.com/api` |
 | Auth | JWT bearer token, persisted with `shared_preferences`; a shared `http.Client` redirects to login on any 401 |
 | Local storage | `shared_preferences` |
 | Notifications | `flutter_local_notifications` |
@@ -96,7 +96,7 @@ lib/
 
 ## API
 
-Base URL: `https://naylinhtet.me/api` (`ApiService.baseUrl`, `ChatService.baseUrl`)
+Base URL: `https://tripnestbackend-v2.onrender.com/api` (`ApiService.baseUrl`, `ChatService.baseUrl`)
 
 All authenticated calls send `Authorization: Bearer <token>`.
 

@@ -18,7 +18,7 @@ class ApiService {
 
   final http.Client _credentialClient;
 
-  static const String baseUrl = 'https://naylinhtet.me/api';
+  static const String baseUrl = 'https://tripnestbackend-v2.onrender.com/api';
 
   /// Log a request outcome without ever emitting the response body, which
   /// carries revenue figures, tokens, and other data that must not reach

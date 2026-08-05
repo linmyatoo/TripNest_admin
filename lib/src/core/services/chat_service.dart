@@ -66,7 +66,7 @@ class ChatRoom {
 }
 
 class ChatService {
-  static const String baseUrl = 'https://naylinhtet.me/api';
+  static const String baseUrl = 'https://tripnestbackend-v2.onrender.com/api';
 
   /// Decode a JSON object body, tolerating non-JSON error pages.
   ///
