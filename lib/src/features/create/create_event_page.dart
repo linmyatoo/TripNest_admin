@@ -188,6 +188,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
       );
     }
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result['success']) {

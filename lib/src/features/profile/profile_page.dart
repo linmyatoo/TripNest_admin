@@ -39,6 +39,7 @@ class _ProfilePageState extends State<ProfilePage> {
     // Fetch organizer profile
     try {
       final result = await _apiService.getOrganizerProfile();
+      if (!mounted) return;
       if (result['success']) {
         final data = result['data'];
         setState(() {
@@ -54,6 +55,7 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _organizationName = 'Not Set';
         _isLoading = false;
@@ -88,12 +90,19 @@ class _ProfilePageState extends State<ProfilePage> {
         );
       }
     } catch (e) {
-      // Close loading dialog
+      // Belt and braces: ApiService.logout already clears the session in its
+      // own `finally`. Guard this anyway so a SharedPreferences failure can
+      // never leave the user stuck behind the non-dismissible dialog above.
+      try {
+        await AuthStorage.clearAuth();
+      } catch (_) {
+        // Best effort; navigating away matters more.
+      }
+
       if (context.mounted) {
+        // Close loading dialog
         Navigator.pop(context);
 
-        // Even on error, clear local storage and logout
-        await AuthStorage.clearAuth();
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/login',

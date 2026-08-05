@@ -44,6 +44,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
 
     try {
       final result = await _apiService.getOrganizerProfile();
+      if (!mounted) return;
 
       if (result['success']) {
         final data = result['data'];
@@ -65,6 +66,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
       }
     } catch (e) {
       debugPrint('Error loading profile: $e');
+      if (!mounted) return;
       _snack('Error loading profile');
       setState(() => _isLoading = false);
     }
@@ -83,17 +85,17 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
         address: addressCtrl.text.trim(),
       );
 
+      if (!mounted) return;
       setState(() => _isSaving = false);
 
       if (result['success']) {
         _snack('Profile saved successfully');
-        if (mounted) {
-          Navigator.pop(context);
-        }
+        Navigator.pop(context);
       } else {
         _snack(result['message'] ?? 'Failed to save profile');
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isSaving = false);
       _snack('Error saving profile');
     }
