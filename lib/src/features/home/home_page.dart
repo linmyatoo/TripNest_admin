@@ -173,6 +173,8 @@ class _Header extends StatelessWidget {
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(organizerName ?? 'Welcome',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
@@ -180,8 +182,12 @@ class _Header extends StatelessWidget {
               const Icon(Icons.location_on_outlined,
                   size: 16, color: AppColors.muted),
               const SizedBox(width: 4),
-              Text(airQuality?.cityName ?? 'Chiang Rai, Thailand',
-                  style: const TextStyle(color: AppColors.muted)),
+              Flexible(
+                child: Text(airQuality?.cityName ?? 'Chiang Rai, Thailand',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.muted)),
+              ),
             ]),
           ]),
         ),
@@ -430,26 +436,33 @@ class _EventCardState extends State<_EventCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 12),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _StatItem(
-                        icon: Icons.attach_money,
-                        label: 'Revenue',
-                        value: '฿${totalRevenue.toStringAsFixed(2)}',
+                      Expanded(
+                        child: _StatItem(
+                          icon: Icons.attach_money,
+                          label: 'Revenue',
+                          value: '฿${totalRevenue.toStringAsFixed(2)}',
+                        ),
                       ),
-                      _StatItem(
-                        icon: Icons.bookmark_outline,
-                        label: 'Bookings',
-                        value: totalBookings.toString(),
+                      Expanded(
+                        child: _StatItem(
+                          icon: Icons.bookmark_outline,
+                          label: 'Bookings',
+                          value: totalBookings.toString(),
+                        ),
                       ),
-                      _StatItem(
-                        icon: Icons.confirmation_number_outlined,
-                        label: 'Tickets',
-                        value: totalTickets.toString(),
+                      Expanded(
+                        child: _StatItem(
+                          icon: Icons.confirmation_number_outlined,
+                          label: 'Tickets',
+                          value: totalTickets.toString(),
+                        ),
                       ),
                     ],
                   ),
@@ -476,8 +489,15 @@ class _StatItem extends StatelessWidget {
       children: [
         Icon(icon, size: 20, color: AppColors.primary),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(value,
+              maxLines: 1,
+              style: const TextStyle(fontWeight: FontWeight.w700)),
+        ),
         Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: AppColors.muted)),
       ],
     );
