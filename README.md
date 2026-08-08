@@ -143,6 +143,29 @@ For iOS, install the pods from the `ios/` directory:
 cd ios && pod install
 ```
 
+### API keys
+
+`lib/src/core/config/api_config.dart` holds third-party keys and is git-ignored,
+so a fresh clone has to create it:
+
+```dart
+/// API keys for third-party services.
+class ApiConfig {
+  ApiConfig._();
+
+  // --- WAQI air quality (https://aqicn.org/data-platform/token/) ---
+  static const String waqiApiToken = 'PASTE_YOUR_WAQI_TOKEN_HERE';
+  static const String waqiBaseUrl = 'https://api.waqi.info/feed';
+
+  /// True when the WAQI token is still a placeholder.
+  static bool get isWaqiTokenMissing =>
+      waqiApiToken.isEmpty || waqiApiToken.startsWith('PASTE_YOUR_');
+}
+```
+
+A free WAQI token comes from https://aqicn.org/data-platform/token/. Without it
+the air quality card is skipped rather than failing the build.
+
 ### Run
 
 ```bash

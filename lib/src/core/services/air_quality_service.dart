@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart';
 import 'notification_service.dart';
 
 class AirQualityData {
@@ -39,8 +40,6 @@ class AirQualityData {
 }
 
 class AirQualityService {
-  static const String _apiToken = '004eb8cf677c3893baf0b3a7267ba39d3359f777';
-  static const String _baseUrl = 'https://api.waqi.info/feed';
   static const String _lastPm25Key = 'last_pm25_value';
   static const String _lastCheckDateKey = 'last_aqi_check_date';
   static const double _changeThreshold = 0.5;
@@ -48,9 +47,14 @@ class AirQualityService {
   /// Get air quality data for current location
   static Future<AirQualityData?> getAirQuality(
       {String location = 'here'}) async {
+    if (ApiConfig.isWaqiTokenMissing) {
+      debugPrint('Air quality disabled: WAQI token not configured.');
+      return null;
+    }
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl/$location/?token=$_apiToken'),
+        Uri.parse(
+            '${ApiConfig.waqiBaseUrl}/$location/?token=${ApiConfig.waqiApiToken}'),
       );
 
       if (response.statusCode == 200) {

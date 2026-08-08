@@ -8,9 +8,13 @@
 .build/
 .buildlog/
 .history
+.env
 .svn/
 .swiftpm/
 migrate_working_dir/
+
+# API Keys - DO NOT COMMIT
+lib/src/core/config/api_config.dart
 
 # IntelliJ related
 *.iml
@@ -18,10 +22,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# The .vscode folder holds editor settings that are machine-specific (the
+# generated cmake.sourceDirectory is an absolute path), so it stays untracked.
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
