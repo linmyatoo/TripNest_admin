@@ -286,7 +286,6 @@ class _SentimentStats extends StatelessWidget {
     final analyzed = sentiment['analyzedCount'] as int? ?? 0;
     final positive = sentiment['positiveCount'] as int? ?? 0;
     final negative = sentiment['negativeCount'] as int? ?? 0;
-    final neutral = sentiment['neutralCount'] as int? ?? 0;
     final score = (sentiment['averageScore'] as num?)?.toDouble() ?? 0.0;
 
     final negPct =
@@ -303,6 +302,8 @@ class _SentimentStats extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 8),
+        // The classifier is binary — every analyzed review lands on
+        // positive or negative — so there is no neutral chip to render.
         Wrap(
           spacing: 8,
           runSpacing: 6,
@@ -311,8 +312,6 @@ class _SentimentStats extends StatelessWidget {
                 label: '👍 $positive positive ($posPct%)', color: Colors.green),
             _SentimentChip(
                 label: '👎 $negative negative ($negPct%)', color: Colors.red),
-            if (neutral > 0)
-              _SentimentChip(label: '😐 $neutral neutral', color: Colors.grey),
             _SentimentChip(
                 label: 'Score: ${score.toStringAsFixed(2)}',
                 color: AppColors.primary),
