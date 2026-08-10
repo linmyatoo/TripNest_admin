@@ -41,6 +41,27 @@ class ApiService {
     }
   }
 
+  /// Decode a collection endpoint that may answer either with a bare JSON
+  /// array or with an object wrapping that array under [key].
+  ///
+  /// [_decodeOrEmpty] cannot serve these: it is typed `Map<String, dynamic>`,
+  /// so testing its result with `is List` is dead code that always takes the
+  /// empty branch — which is exactly how the reviews list came to render as
+  /// permanently empty.
+  static List<dynamic> _decodeListOrEmpty(http.Response response, String key) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is List) return decoded;
+      if (decoded is Map<String, dynamic>) {
+        final nested = decoded[key];
+        if (nested is List) return nested;
+      }
+      return const [];
+    } catch (_) {
+      return const [];
+    }
+  }
+
   // Register a new user
   Future<Map<String, dynamic>> register({
     required String email,
@@ -578,11 +599,9 @@ class ApiService {
       _logStatus('My events', response);
 
       if (response.statusCode == 200) {
-        final data = _decodeOrEmpty(response);
-        final events = data is List ? data : (data['events'] ?? data);
         return {
           'success': true,
-          'events': events is List ? events : [],
+          'events': _decodeListOrEmpty(response, 'events'),
         };
       } else {
         final data = _decodeOrEmpty(response);
@@ -761,10 +780,9 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = _decodeOrEmpty(response);
         return {
           'success': true,
-          'reviews': data is List ? data : [],
+          'reviews': _decodeListOrEmpty(response, 'reviews'),
         };
       } else {
         final data = _decodeOrEmpty(response);
