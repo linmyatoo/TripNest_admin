@@ -408,6 +408,63 @@ class ApiService {
     }
   }
 
+  // Update an existing organizer profile
+  Future<Map<String, dynamic>> updateOrganizerProfile({
+    String? organizationName,
+    String? contactNumber,
+    String? address,
+  }) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final body = <String, dynamic>{};
+      if (organizationName != null && organizationName.isNotEmpty) {
+        body['organizationName'] = organizationName;
+      }
+      if (contactNumber != null && contactNumber.isNotEmpty) {
+        body['contactNumber'] = contactNumber;
+      }
+      if (address != null && address.isNotEmpty) {
+        body['address'] = address;
+      }
+
+      final response = await apiClient.patch(
+        Uri.parse('$baseUrl/organizers/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+        body: jsonEncode(body),
+      );
+
+      final data = _decodeOrEmpty(response);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': data,
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to update organizer profile',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   /// Forgot password - sends reset link to email
   static Future<Map<String, dynamic>> forgotPassword({
     required String email,

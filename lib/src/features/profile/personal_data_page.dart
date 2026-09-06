@@ -32,6 +32,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
   static const int _maxBytes = 1024 * 1024; // 1 MB
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _hasExistingProfile = false;
 
   @override
   void initState() {
@@ -58,6 +59,7 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
               : '';
           addressCtrl.text =
               data['address'] != 'Not Set' ? data['address'] ?? '' : '';
+          _hasExistingProfile = true;
           _isLoading = false;
         });
       } else {
@@ -79,16 +81,23 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
     setState(() => _isSaving = true);
 
     try {
-      final result = await _apiService.createOrganizerProfile(
-        organizationName: organizationNameCtrl.text.trim(),
-        contactNumber: contactNumberCtrl.text.trim(),
-        address: addressCtrl.text.trim(),
-      );
+      final result = _hasExistingProfile
+          ? await _apiService.updateOrganizerProfile(
+              organizationName: organizationNameCtrl.text.trim(),
+              contactNumber: contactNumberCtrl.text.trim(),
+              address: addressCtrl.text.trim(),
+            )
+          : await _apiService.createOrganizerProfile(
+              organizationName: organizationNameCtrl.text.trim(),
+              contactNumber: contactNumberCtrl.text.trim(),
+              address: addressCtrl.text.trim(),
+            );
 
       if (!mounted) return;
       setState(() => _isSaving = false);
 
       if (result['success']) {
+        _hasExistingProfile = true;
         _snack('Profile saved successfully');
         Navigator.pop(context);
       } else {

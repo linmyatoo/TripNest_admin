@@ -68,6 +68,13 @@ class _CreateEventPageState extends State<CreateEventPage> {
     final result = await _apiService.getEventById(widget.eventId!);
 
     if (mounted) {
+      if (!result['success']) {
+        _showSnack(
+          result['message'] ??
+              'Failed to load event. It may still be pending approval.',
+          isError: true,
+        );
+      }
       setState(() {
         _isFetchingEvent = false;
         if (result['success']) {
