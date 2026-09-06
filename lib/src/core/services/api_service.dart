@@ -282,7 +282,7 @@ class ApiService {
       }
 
       final response = await apiClient.get(
-        Uri.parse('$baseUrl/user/profile'),
+        Uri.parse('$baseUrl/profile/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token,
@@ -299,7 +299,7 @@ class ApiService {
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to fetch profile',
+          'message': data['error'] ?? 'Failed to fetch profile',
         };
       }
     } catch (e) {
@@ -646,7 +646,7 @@ class ApiService {
       }
 
       final response = await apiClient.get(
-        Uri.parse('$baseUrl/events'),
+        Uri.parse('$baseUrl/events/mine'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token,
