@@ -74,6 +74,7 @@ class HomePageState extends State<HomePage> {
           children: [
             _Header(
               organizerName: _organizer?['organizationName'],
+              organizerAddress: _organizer?['address'],
               airQuality: _airQuality,
             ),
             const SizedBox(height: 12),
@@ -149,8 +150,9 @@ class HomePageState extends State<HomePage> {
 
 class _Header extends StatelessWidget {
   final String? organizerName;
+  final String? organizerAddress;
   final AirQualityData? airQuality;
-  const _Header({this.organizerName, this.airQuality});
+  const _Header({this.organizerName, this.organizerAddress, this.airQuality});
 
   Color _getAqiColor(int aqi) {
     if (aqi <= 50) return Colors.green;
@@ -183,7 +185,10 @@ class _Header extends StatelessWidget {
                   size: 16, color: AppColors.muted),
               const SizedBox(width: 4),
               Flexible(
-                child: Text(airQuality?.cityName ?? 'Chiang Rai, Thailand',
+                child: Text(
+                    (organizerAddress != null && organizerAddress!.isNotEmpty)
+                        ? organizerAddress!
+                        : airQuality?.cityName ?? 'Chiang Rai, Thailand',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: AppColors.muted)),
