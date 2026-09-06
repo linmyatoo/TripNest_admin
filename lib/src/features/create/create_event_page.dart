@@ -238,11 +238,19 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final firstDate = DateTime(now.year, now.month, now.day);
+    final lastDate = DateTime(now.year + 10, 12, 31);
+    var initial = DateTime.tryParse(dateCtrl.text) ?? now;
+    if (initial.isBefore(firstDate)) initial = firstDate;
+    if (initial.isAfter(lastDate)) initial = lastDate;
+
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 3),
+      builder: (_) => _MonthYearDatePickerDialog(
+        initialDate: initial,
+        firstDate: firstDate,
+        lastDate: lastDate,
+      ),
     );
     if (picked != null) {
       dateCtrl.text =
@@ -660,6 +668,129 @@ class _ExistingImageTile extends StatelessWidget {
           child: const Icon(Icons.image, color: Colors.grey),
         ),
       ),
+    );
+  }
+}
+
+class _MonthYearDatePickerDialog extends StatefulWidget {
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+
+  const _MonthYearDatePickerDialog({
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+  });
+
+  @override
+  State<_MonthYearDatePickerDialog> createState() =>
+      _MonthYearDatePickerDialogState();
+}
+
+class _MonthYearDatePickerDialogState
+    extends State<_MonthYearDatePickerDialog> {
+  static const _monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+
+  late int _year;
+  late int _month;
+  late DateTime _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.initialDate;
+    _year = widget.initialDate.year;
+    _month = widget.initialDate.month;
+  }
+
+  DateTime get _gridDate {
+    var date = DateTime(_year, _month, 1);
+    if (date.isBefore(widget.firstDate)) date = widget.firstDate;
+    if (date.isAfter(widget.lastDate)) date = widget.lastDate;
+    return date;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final years = [
+      for (var y = widget.firstDate.year; y <= widget.lastDate.year; y++) y,
+    ];
+
+    return AlertDialog(
+      contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      content: SizedBox(
+        width: 320,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: WhiteDropdownFormField<int>(
+                    value: _month,
+                    items: [
+                      for (var m = 1; m <= 12; m++)
+                        DropdownMenuItem(
+                            value: m, child: Text(_monthNames[m - 1])),
+                    ],
+                    onChanged: (m) {
+                      if (m == null) return;
+                      setState(() => _month = m);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: WhiteDropdownFormField<int>(
+                    value: _year,
+                    items: [
+                      for (final y in years)
+                        DropdownMenuItem(value: y, child: Text('$y')),
+                    ],
+                    onChanged: (y) {
+                      if (y == null) return;
+                      setState(() => _year = y);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 320,
+              child: CalendarDatePicker(
+                key: ValueKey('$_year-$_month'),
+                initialDate: _gridDate,
+                firstDate: widget.firstDate,
+                lastDate: widget.lastDate,
+                onDisplayedMonthChanged: (d) {
+                  setState(() {
+                    _year = d.year;
+                    _month = d.month;
+                  });
+                },
+                onDateChanged: (d) => _selected = d,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('CANCEL'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _selected),
+          child: const Text('OK'),
+        ),
+      ],
     );
   }
 }
