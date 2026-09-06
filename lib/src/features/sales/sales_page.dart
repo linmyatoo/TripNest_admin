@@ -271,7 +271,7 @@ class _TableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const h = TextStyle(color: AppColors.muted, fontWeight: FontWeight.w600);
-    return Row(children: [
+    return const Row(children: [
       Expanded(flex: 6, child: Text('Name', style: h)),
       Expanded(flex: 2, child: Text('Ticket', style: h)),
       Expanded(
