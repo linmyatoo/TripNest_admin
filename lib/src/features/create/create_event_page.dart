@@ -37,15 +37,31 @@ class _CreateEventPageState extends State<CreateEventPage> {
   bool get _isEditMode => widget.eventId != null;
 
   String? category;
+  // Must match the backend's Mood enum exactly (mood.categorizer.ts) —
+  // isValidMood() rejects anything outside these values, case-sensitive.
+  static const Map<String, String> _moodLabels = {
+    'FESTIVE': 'Festive',
+    'CHILL': 'Chill',
+    'ENERGETIC': 'Energetic',
+    'ROMANTIC': 'Romantic',
+    'ADVENTUROUS': 'Adventurous',
+    'CULTURAL': 'Cultural',
+    'PARTY': 'Party',
+    'RELAXED': 'Relaxed',
+    'EDUCATIONAL': 'Educational',
+    'SPIRITUAL': 'Spiritual',
+  };
   final List<String> categories = const [
-    'Relaxed',
-    'Excited',
-    'Adventurous',
-    'Romance',
-    'Energetic',
-    'Cultural',
-    'Fun',
-    'Festival'
+    'FESTIVE',
+    'CHILL',
+    'ENERGETIC',
+    'ROMANTIC',
+    'ADVENTUROUS',
+    'CULTURAL',
+    'PARTY',
+    'RELAXED',
+    'EDUCATIONAL',
+    'SPIRITUAL',
   ];
 
   final _picker = ImagePicker();
@@ -84,7 +100,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
           locationCtrl.text = event['location'] ?? '';
           seatCtrl.text = (event['capacity'] ?? '').toString();
           priceCtrl.text = (event['price'] ?? '').toString();
-          category = event['mood'];
+          final eventMood = event['mood'] as String?;
+          category = categories.contains(eventMood) ? eventMood : null;
 
           // Parse date from ISO format
           final dateStr = event['date'] as String?;
@@ -373,8 +390,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
                       decoration:
                           const InputDecoration(), // picks up global white+outline
                       items: categories
-                          .map(
-                              (c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .map((c) => DropdownMenuItem(
+                              value: c, child: Text(_moodLabels[c] ?? c)))
                           .toList(),
                       onChanged: (v) => setState(() => category = v),
                     ),
