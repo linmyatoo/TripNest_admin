@@ -1,5 +1,5 @@
 # ios/Podfile
-platform :ios, '13.0'   # or higher if you prefer
+platform :ios, '15.0'   # or higher if you prefer
 
 install! 'cocoapods', :disable_input_output_paths => true
 
