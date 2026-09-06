@@ -63,7 +63,9 @@ class _PersonalDataPageState extends State<PersonalDataPage> {
           _isLoading = false;
         });
       } else {
-        _snack('Failed to load profile: ${result['message']}');
+        if (result['statusCode'] != 404) {
+          _snack('Failed to load profile: ${result['message']}');
+        }
         setState(() => _isLoading = false);
       }
     } catch (e) {

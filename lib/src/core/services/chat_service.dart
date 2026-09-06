@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
 import 'auth_storage.dart';
 import 'session.dart';
 
@@ -66,7 +67,7 @@ class ChatRoom {
 }
 
 class ChatService {
-  static const String baseUrl = 'https://tripnestbackend-v2.onrender.com/api';
+  static const String baseUrl = ApiConfig.baseUrl;
 
   /// Decode a JSON object body, tolerating non-JSON error pages.
   ///

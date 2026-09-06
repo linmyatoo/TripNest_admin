@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'api_config.dart';
 import 'auth_storage.dart';
 import 'security_service.dart';
 import 'session.dart';
@@ -18,7 +19,7 @@ class ApiService {
 
   final http.Client _credentialClient;
 
-  static const String baseUrl = 'https://tripnestbackend-v2.onrender.com/api';
+  static const String baseUrl = ApiConfig.baseUrl;
 
   /// Log a request outcome without ever emitting the response body, which
   /// carries revenue figures, tokens, and other data that must not reach
@@ -340,7 +341,8 @@ class ApiService {
       } else {
         return {
           'success': false,
-          'message': data['message'] ?? 'Failed to fetch organizer profile',
+          'statusCode': response.statusCode,
+          'message': data['error'] ?? 'Failed to fetch organizer profile',
         };
       }
     } catch (e) {
