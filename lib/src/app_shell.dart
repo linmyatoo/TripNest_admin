@@ -83,7 +83,7 @@ class _AppShellState extends State<AppShell> {
               const NavigationDestination(
                   icon: Icon(Icons.local_offer_outlined),
                   selectedIcon: Icon(Icons.local_offer),
-                  label: 'Sell'),
+                  label: 'Sales'),
               const NavigationDestination(
                   icon: Icon(Icons.person_outline),
                   selectedIcon: Icon(Icons.person),
