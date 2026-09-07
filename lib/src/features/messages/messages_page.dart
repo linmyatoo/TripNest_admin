@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/services/api_service.dart';
 import '../../core/services/auth_storage.dart';
 import '../../core/services/chat_service.dart';
 import '../../core/services/notification_service.dart';
@@ -49,21 +50,50 @@ class MessagesPage extends StatefulWidget {
 }
 
 class _MessagesPageState extends State<MessagesPage> {
+  final _apiService = ApiService();
   List<ChatRoom> _chatRooms = [];
   bool _isLoading = true;
   String? _errorMessage;
   Timer? _refreshTimer;
   int _lastKnownMessageCount = 0;
 
+  // IDs of events this creator organizes. Null means "unknown" (not loaded
+  // yet or the lookup failed), in which case we fail open and show every
+  // room rather than hiding messages we can't confirm aren't theirs.
+  Set<String>? _myEventIds;
+
   @override
   void initState() {
     super.initState();
     _loadLastKnownCount();
-    _loadChatRooms();
+    _loadMyEventIds().then((_) => _loadChatRooms());
     // Auto-refresh every 5 seconds for real-time updates
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       _refreshChatRooms();
     });
+  }
+
+  Future<void> _loadMyEventIds() async {
+    try {
+      final result = await _apiService.getMyEvents();
+      if (result['success'] == true) {
+        final events = (result['events'] as List? ?? []);
+        _myEventIds = events
+            .map((e) => (e as Map<String, dynamic>)['id']?.toString())
+            .whereType<String>()
+            .toSet();
+      }
+    } catch (e) {
+      debugPrint('Error loading my events: $e');
+    }
+  }
+
+  // Only show chat rooms for events this creator organizes. If the
+  // creator's own event list is unknown, show everything unfiltered.
+  List<ChatRoom> _scopeToMyEvents(List<ChatRoom> rooms) {
+    final ids = _myEventIds;
+    if (ids == null) return rooms;
+    return rooms.where((room) => ids.contains(room.eventId)).toList();
   }
 
   @override
@@ -100,7 +130,7 @@ class _MessagesPageState extends State<MessagesPage> {
     if (!mounted) return;
     try {
       debugPrint('Refreshing chat rooms...');
-      final rooms = await ChatService.getChatRooms();
+      final rooms = _scopeToMyEvents(await ChatService.getChatRooms());
       debugPrint('Refreshed ${rooms.length} rooms');
       if (!mounted) return;
 
@@ -157,7 +187,7 @@ class _MessagesPageState extends State<MessagesPage> {
 
     try {
       debugPrint('Loading chat rooms...');
-      final rooms = await ChatService.getChatRooms();
+      final rooms = _scopeToMyEvents(await ChatService.getChatRooms());
       debugPrint('Loaded ${rooms.length} rooms');
       if (!mounted) return;
 

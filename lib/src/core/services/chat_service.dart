@@ -37,6 +37,7 @@ class ChatMessage {
 
 class ChatRoom {
   final String id;
+  final String eventId;
   final String eventTitle;
   final String? eventImageUrl;
   final int memberCount;
@@ -45,6 +46,7 @@ class ChatRoom {
 
   ChatRoom({
     required this.id,
+    required this.eventId,
     required this.eventTitle,
     this.eventImageUrl,
     required this.memberCount,
@@ -55,6 +57,7 @@ class ChatRoom {
   factory ChatRoom.fromJson(Map<String, dynamic> json) {
     return ChatRoom(
       id: json['id'] ?? '',
+      eventId: json['eventId'] ?? '',
       eventTitle: json['eventTitle'] ?? 'Untitled Event',
       eventImageUrl: json['eventImageUrl'],
       memberCount: json['memberCount'] ?? 0,

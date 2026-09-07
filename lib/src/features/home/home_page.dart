@@ -12,9 +12,12 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => HomePageState();
 }
 
-class HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage>
+    with SingleTickerProviderStateMixin {
   final _apiService = ApiService();
-  List<Map<String, dynamic>> _events = [];
+  late final TabController _tabController;
+  List<Map<String, dynamic>> _upcomingEvents = [];
+  List<Map<String, dynamic>> _completedEvents = [];
   Map<String, dynamic>? _organizer;
   bool _isLoading = true;
   String? _error;
@@ -23,8 +26,15 @@ class HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _fetchEvents();
     _fetchAirQuality();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   /// Public method to refresh events (called from AppShell)
@@ -46,22 +56,58 @@ class HomePageState extends State<HomePage> {
       _error = null;
     });
 
-    final result = await _apiService.getDashboardEvents();
+    final results = await Future.wait([
+      _apiService.getDashboardEvents(),
+      _apiService.getMyEvents(),
+    ]);
+    final dashboardResult = results[0];
+    final myEventsResult = results[1];
 
-    if (mounted) {
+    if (!mounted) return;
+
+    if (!dashboardResult['success']) {
       setState(() {
         _isLoading = false;
-        if (result['success']) {
-          _organizer = result['organizer'];
-          final eventsList = result['events'] as List? ?? [];
-          _events = eventsList
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList();
-        } else {
-          _error = result['message'];
-        }
+        _error = dashboardResult['message'];
       });
+      return;
     }
+
+    // getDashboardEvents() has revenue/booking stats but no event date;
+    // getMyEvents() has the date. Join the two by event id so events can be
+    // split into upcoming vs completed.
+    final dateById = <String, DateTime>{};
+    for (final e in (myEventsResult['events'] as List? ?? [])) {
+      final event = Map<String, dynamic>.from(e as Map);
+      final id = event['id']?.toString();
+      final date = DateTime.tryParse(event['date']?.toString() ?? '');
+      if (id != null && date != null) {
+        dateById[id] = date;
+      }
+    }
+
+    final now = DateTime.now();
+    final upcoming = <Map<String, dynamic>>[];
+    final completed = <Map<String, dynamic>>[];
+
+    for (final e in (dashboardResult['events'] as List? ?? [])) {
+      final event = Map<String, dynamic>.from(e as Map);
+      final date = dateById[event['eventId']?.toString()];
+      event['date'] = date;
+      if (date != null && date.isBefore(now)) {
+        completed.add(event);
+      } else {
+        // Unknown date defaults to upcoming so events aren't hidden.
+        upcoming.add(event);
+      }
+    }
+
+    setState(() {
+      _isLoading = false;
+      _organizer = dashboardResult['organizer'];
+      _upcomingEvents = upcoming;
+      _completedEvents = completed;
+    });
   }
 
   @override
@@ -78,18 +124,24 @@ class HomePageState extends State<HomePage> {
               airQuality: _airQuality,
             ),
             const SizedBox(height: 12),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Your events',
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                // _BlueLink('See All'),
-              ],
-            ),
+            const Text('Your events',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 12),
+            if (!_isLoading && _error == null) ...[
+              TabBar(
+                controller: _tabController,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.muted,
+                indicatorColor: AppColors.primary,
+                tabs: [
+                  Tab(text: 'Upcoming (${_upcomingEvents.length})'),
+                  Tab(text: 'Completed (${_completedEvents.length})'),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             Expanded(
-              child: _buildEventsList(),
+              child: _buildBody(),
             ),
           ],
         ),
@@ -97,7 +149,7 @@ class HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildEventsList() {
+  Widget _buildBody() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -118,19 +170,28 @@ class HomePageState extends State<HomePage> {
       );
     }
 
-    if (_events.isEmpty) {
-      return const Center(
-        child:
-            Text('No events found', style: TextStyle(color: AppColors.muted)),
+    return TabBarView(
+      controller: _tabController,
+      children: [
+        _buildEventsList(_upcomingEvents, 'No upcoming events'),
+        _buildEventsList(_completedEvents, 'No completed events'),
+      ],
+    );
+  }
+
+  Widget _buildEventsList(List<Map<String, dynamic>> events, String emptyText) {
+    if (events.isEmpty) {
+      return Center(
+        child: Text(emptyText, style: const TextStyle(color: AppColors.muted)),
       );
     }
 
     return RefreshIndicator(
       onRefresh: _fetchEvents,
       child: ListView.separated(
-        itemCount: _events.length,
+        itemCount: events.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (_, i) => _EventCard(event: _events[i]),
+        itemBuilder: (_, i) => _EventCard(event: events[i]),
       ),
     );
   }
@@ -251,6 +312,14 @@ class _EventCardState extends State<_EventCard> {
   Timer? _autoSlideTimer;
   int _currentPage = 0;
 
+  String? _formatStartTime(DateTime? date) {
+    if (date == null) return null;
+    final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+    final minute = date.minute.toString().padLeft(2, '0');
+    final period = date.hour < 12 ? 'AM' : 'PM';
+    return '$hour:$minute $period';
+  }
+
   List<String> get _images {
     final event = widget.event;
     if (event['images'] != null && (event['images'] as List).isNotEmpty) {
@@ -304,6 +373,7 @@ class _EventCardState extends State<_EventCard> {
     final totalRevenue = (event['totalRevenue'] ?? 0).toDouble();
     final totalBookings = event['totalBookings'] ?? 0;
     final totalTickets = event['totalTickets'] ?? 0;
+    final startTime = _formatStartTime(event['date'] as DateTime?);
 
     return Ink(
       decoration: BoxDecoration(
@@ -445,6 +515,19 @@ class _EventCardState extends State<_EventCard> {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700)),
+                  if (startTime != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.schedule,
+                            size: 14, color: AppColors.muted),
+                        const SizedBox(width: 4),
+                        Text(startTime,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.muted)),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Row(
                     children: [

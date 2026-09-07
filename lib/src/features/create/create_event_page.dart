@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
@@ -9,6 +10,7 @@ import 'package:path/path.dart' as p;
 
 import '../../core/services/api_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/theme/app_colors.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/dropdown_form_field.dart';
@@ -28,7 +30,15 @@ class _CreateEventPageState extends State<CreateEventPage> {
   final locationCtrl = TextEditingController();
   final descCtrl = TextEditingController();
   final dateCtrl = TextEditingController();
+  final timeCtrl = TextEditingController();
   final priceCtrl = TextEditingController();
+
+  int _hour12 = 12;
+  int _minute = 0;
+  bool _isPM = false;
+
+  String _formatTime() =>
+      '${_hour12.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')} ${_isPM ? 'PM' : 'AM'}';
 
   final _apiService = ApiService();
   bool _isLoading = false;
@@ -110,6 +120,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
               final date = DateTime.parse(dateStr);
               dateCtrl.text =
                   '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+              _isPM = date.hour >= 12;
+              _hour12 = date.hour % 12 == 0 ? 12 : date.hour % 12;
+              _minute = date.minute;
+              timeCtrl.text = _formatTime();
             } catch (_) {}
           }
 
@@ -154,6 +168,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
       _showSnack('Please select a date', isError: true);
       return;
     }
+    if (timeCtrl.text.trim().isEmpty) {
+      _showSnack('Please select a start time', isError: true);
+      return;
+    }
     if (location.isEmpty) {
       _showSnack('Please enter location', isError: true);
       return;
@@ -179,8 +197,13 @@ class _CreateEventPageState extends State<CreateEventPage> {
       return;
     }
 
-    // Convert date to ISO format (add time component)
-    final isoDate = '${date}T00:00:00.000Z';
+    // Convert date + stepped start time to ISO format
+    final hour24 = _isPM
+        ? (_hour12 % 12) + 12
+        : _hour12 % 12;
+    final hour = hour24.toString().padLeft(2, '0');
+    final minute = _minute.toString().padLeft(2, '0');
+    final isoDate = '${date}T$hour:$minute:00.000Z';
 
     setState(() => _isLoading = true);
 
@@ -256,6 +279,29 @@ class _CreateEventPageState extends State<CreateEventPage> {
       dateCtrl.text =
           '${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
       setState(() {});
+    }
+  }
+
+  Future<void> _openTimePicker() async {
+    final picked = await showModalBottomSheet<_PickedTime>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _TimePickerSheet(
+        initialHour12: _hour12,
+        initialMinute: _minute,
+        initialIsPM: _isPM,
+      ),
+    );
+    if (picked != null) {
+      setState(() {
+        _hour12 = picked.hour12;
+        _minute = picked.minute;
+        _isPM = picked.isPM;
+        timeCtrl.text = _formatTime();
+      });
     }
   }
 
@@ -474,6 +520,20 @@ class _CreateEventPageState extends State<CreateEventPage> {
                     ),
 
                     const SizedBox(height: 16),
+                    const Text('Start time',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: timeCtrl,
+                      readOnly: true,
+                      onTap: _openTimePicker,
+                      decoration: const InputDecoration(
+                        hintText: 'Choose the start time',
+                        suffixIcon: Icon(Icons.schedule_outlined),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
                     const Text('Location',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 8),
@@ -667,6 +727,239 @@ class _ExistingImageTile extends StatelessWidget {
           color: Colors.grey[200],
           child: const Icon(Icons.image, color: Colors.grey),
         ),
+      ),
+    );
+  }
+}
+
+class _PickedTime {
+  final int hour12;
+  final int minute;
+  final bool isPM;
+  const _PickedTime(this.hour12, this.minute, this.isPM);
+}
+
+class _TimePreset {
+  final String label;
+  final int hour12;
+  final int minute;
+  final bool isPM;
+  const _TimePreset(this.label, this.hour12, this.minute, this.isPM);
+}
+
+class _TimePickerSheet extends StatefulWidget {
+  final int initialHour12;
+  final int initialMinute;
+  final bool initialIsPM;
+
+  const _TimePickerSheet({
+    required this.initialHour12,
+    required this.initialMinute,
+    required this.initialIsPM,
+  });
+
+  @override
+  State<_TimePickerSheet> createState() => _TimePickerSheetState();
+}
+
+class _TimePickerSheetState extends State<_TimePickerSheet> {
+  static const _presets = [
+    _TimePreset('9 am', 9, 0, false),
+    _TimePreset('12 pm', 12, 0, true),
+    _TimePreset('4 pm', 4, 0, true),
+    _TimePreset('6 pm', 6, 0, true),
+  ];
+
+  late int _hour12 = widget.initialHour12;
+  late int _minute = widget.initialMinute;
+  late bool _isPM = widget.initialIsPM;
+
+  late final _hourController =
+      FixedExtentScrollController(initialItem: _hour12 - 1);
+  late final _minuteController =
+      FixedExtentScrollController(initialItem: _minute);
+  late final _periodController =
+      FixedExtentScrollController(initialItem: _isPM ? 1 : 0);
+
+  @override
+  void dispose() {
+    _hourController.dispose();
+    _minuteController.dispose();
+    _periodController.dispose();
+    super.dispose();
+  }
+
+  void _applyPreset(_TimePreset preset) {
+    setState(() {
+      _hour12 = preset.hour12;
+      _minute = preset.minute;
+      _isPM = preset.isPM;
+    });
+    _hourController.animateToItem(preset.hour12 - 1,
+        duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+    _minuteController.animateToItem(preset.minute,
+        duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+    _periodController.animateToItem(preset.isPM ? 1 : 0,
+        duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+  }
+
+  Widget _wheel({
+    required FixedExtentScrollController controller,
+    required List<String> items,
+    required ValueChanged<int> onChanged,
+  }) {
+    return CupertinoPicker(
+      scrollController: controller,
+      itemExtent: 36,
+      onSelectedItemChanged: onChanged,
+      children: items
+          .map((e) => Center(
+                child: Text(e,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w600)),
+              ))
+          .toList(),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hours = List.generate(12, (i) => (i + 1).toString());
+    final minutes = List.generate(60, (i) => i.toString().padLeft(2, '0'));
+    const periods = ['am', 'pm'];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Time',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 180,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  IgnorePointer(
+                    child: Container(
+                      height: 36,
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _wheel(
+                          controller: _hourController,
+                          items: hours,
+                          onChanged: (i) => setState(() => _hour12 = i + 1),
+                        ),
+                      ),
+                      const Text(':',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w600)),
+                      Expanded(
+                        child: _wheel(
+                          controller: _minuteController,
+                          items: minutes,
+                          onChanged: (i) => setState(() => _minute = i),
+                        ),
+                      ),
+                      Expanded(
+                        child: _wheel(
+                          controller: _periodController,
+                          items: periods,
+                          onChanged: (i) => setState(() => _isPM = i == 1),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Presets',
+                  style: TextStyle(color: AppColors.muted, fontSize: 13)),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                for (var i = 0; i < _presets.length; i++) ...[
+                  if (i != 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: _PresetChip(
+                      label: _presets[i].label,
+                      selected: _hour12 == _presets[i].hour12 &&
+                          _minute == _presets[i].minute &&
+                          _isPM == _presets[i].isPM,
+                      onTap: () => _applyPreset(_presets[i]),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24)),
+                ),
+                onPressed: () => Navigator.of(context)
+                    .pop(_PickedTime(_hour12, _minute, _isPM)),
+                child: const Text('Done',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PresetChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PresetChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : const Color(0xFFE6E8EC),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: selected ? AppColors.primary : Colors.black87)),
       ),
     );
   }
