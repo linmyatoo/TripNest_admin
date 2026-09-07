@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/services/air_quality_service.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../bookings/bookings_page.dart';
 
 class HomePage extends StatefulWidget {
   static const route = '/home';
@@ -22,6 +23,7 @@ class HomePageState extends State<HomePage>
   bool _isLoading = true;
   String? _error;
   AirQualityData? _airQuality;
+  int _pendingBookingsCount = 0;
 
   @override
   void initState() {
@@ -59,9 +61,11 @@ class HomePageState extends State<HomePage>
     final results = await Future.wait([
       _apiService.getDashboardEvents(),
       _apiService.getMyEvents(),
+      _apiService.getOrganizerBookings(status: 'PENDING'),
     ]);
     final dashboardResult = results[0];
     final myEventsResult = results[1];
+    final pendingBookingsResult = results[2];
 
     if (!mounted) return;
 
@@ -107,6 +111,9 @@ class HomePageState extends State<HomePage>
       _organizer = dashboardResult['organizer'];
       _upcomingEvents = upcoming;
       _completedEvents = completed;
+      _pendingBookingsCount = pendingBookingsResult['success'] == true
+          ? (pendingBookingsResult['bookings'] as List? ?? []).length
+          : 0;
     });
   }
 
@@ -122,6 +129,11 @@ class HomePageState extends State<HomePage>
               organizerName: _organizer?['organizationName'],
               organizerAddress: _organizer?['address'],
               airQuality: _airQuality,
+              pendingBookingsCount: _pendingBookingsCount,
+              onBookingsTap: () => Navigator.pushNamed(
+                context,
+                BookingsPage.route,
+              ).then((_) => _fetchEvents()),
             ),
             const SizedBox(height: 12),
             const Text('Your events',
@@ -213,7 +225,15 @@ class _Header extends StatelessWidget {
   final String? organizerName;
   final String? organizerAddress;
   final AirQualityData? airQuality;
-  const _Header({this.organizerName, this.organizerAddress, this.airQuality});
+  final int pendingBookingsCount;
+  final VoidCallback? onBookingsTap;
+  const _Header({
+    this.organizerName,
+    this.organizerAddress,
+    this.airQuality,
+    this.pendingBookingsCount = 0,
+    this.onBookingsTap,
+  });
 
   Color _getAqiColor(int aqi) {
     if (aqi <= 50) return Colors.green;
@@ -290,6 +310,13 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
+        IconButton(
+            onPressed: onBookingsTap,
+            icon: Badge(
+              isLabelVisible: pendingBookingsCount > 0,
+              label: Text(pendingBookingsCount.toString()),
+              child: const Icon(Icons.pending_actions_outlined),
+            )),
         IconButton(
             onPressed: () =>
                 Navigator.pushNamed(context, '/notifications-feed'),

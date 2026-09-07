@@ -677,6 +677,93 @@ class ApiService {
     }
   }
 
+  // Get bookings for this organizer's events, optionally filtered by status
+  Future<Map<String, dynamic>> getOrganizerBookings({String? status}) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final uri = Uri.parse('$baseUrl/bookings/organizer').replace(
+        queryParameters: status != null ? {'status': status} : null,
+      );
+      final response = await apiClient.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      _logStatus('Organizer bookings', response);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'bookings': _decodeListOrEmpty(response, 'bookings'),
+        };
+      } else {
+        final data = _decodeOrEmpty(response);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to fetch bookings',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
+  // Confirm a pending booking (organizer/admin only)
+  Future<Map<String, dynamic>> confirmBooking(String bookingId) async {
+    try {
+      final token = AuthStorage.getAuthHeader();
+
+      if (token == null) {
+        return {
+          'success': false,
+          'message': 'No authentication token found',
+        };
+      }
+
+      final response = await apiClient.patch(
+        Uri.parse('$baseUrl/bookings/$bookingId/confirm'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token,
+        },
+      );
+
+      _logStatus('Confirm booking', response);
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'booking': _decodeOrEmpty(response),
+        };
+      } else {
+        final data = _decodeOrEmpty(response);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Failed to confirm booking',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Network error: ${e.toString()}',
+      };
+    }
+  }
+
   // Create a new event with file uploads
   Future<Map<String, dynamic>> createEvent({
     required String title,

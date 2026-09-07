@@ -8,6 +8,7 @@ import 'src/core/theme/app_colors.dart';
 import 'src/features/auth/forgot_password_page.dart';
 import 'src/features/auth/login_page.dart';
 import 'src/features/auth/sign_up_page.dart';
+import 'src/features/bookings/bookings_page.dart';
 import 'src/features/create/create_event_page.dart';
 import 'src/features/home/home_page.dart';
 import 'src/features/notifications/notification_feed_page.dart';
@@ -108,6 +109,7 @@ class TripNestApp extends StatelessWidget {
           return ReviewsPage(eventId: args?['eventId']);
         },
         SalesPage.route: (_) => const SalesPage(),
+        BookingsPage.route: (_) => const BookingsPage(),
         ProfilePage.route: (_) => const ProfilePage(),
         CreateEventPage.route: (context) {
           final args = ModalRoute.of(context)?.settings.arguments
